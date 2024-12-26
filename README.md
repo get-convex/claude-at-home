@@ -19,9 +19,10 @@ bunx convex env set OPENAI_API_KEY <your-key>
 ```
 
 Next, we need to set up auth with Clerk. First, create a new Clerk
-project. I've set this up by creating _two_ Clerk projects, one for
-dev and one for prod. (Adding a production deployment for a Clerk project
-requires a domain!)
+project, and only enable Google sign-in. This is a bit finicky: I 
+ended up needing to create _two_ Clerk projects, one for dev and one
+for prod. This is because adding a production deployment for a Clerk
+project requires a domain. But, for now, just create a single project.
 
 Follow the instructions in https://docs.convex.dev/auth/clerk, creating
 a JWT template, and setting the Issuer URL as an environment variable.
@@ -41,6 +42,9 @@ Then, we need to following the instructions in https://github.com/thomasballinge
 In the Clerk dashboard, go to "Configure" and then "Webhooks", and create a
 new webhook to `https://<your-convex-deployment>.convex.site/clerk-users-webhook`.
 Leave all the default settings and click "Create".
+
+Grab the "Signing Secret" from the newly created webhook, and set it as the `CLERK_WEBHOOK_SECRET`
+environment variable in Convex.
 
 Deploy to Convex again.
 
