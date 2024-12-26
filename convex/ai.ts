@@ -5,7 +5,7 @@ import { internal } from './_generated/api';
 import { zodFunction, zodResponseFormat } from 'openai/helpers/zod';
 import { z } from 'zod';
 import { Conversations } from './lib/Conversations';
-import { Doc, Id } from './_generated/dataModel';
+import { Doc } from './_generated/dataModel';
 import { Messages } from './lib/Messages';
 import {
   ChatCompletionChunk,

@@ -9,7 +9,6 @@ import {
   MutationCtx,
 } from '../_generated/server';
 import { openai } from '../openai';
-import { User } from './User';
 
 export type Source = {
   type: 'message';
@@ -61,7 +60,7 @@ export class Memories {
 
 export const indexMemories = internalAction({
   args: {},
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
     const toIndex = await ctx.runQuery(internal.lib.Memories.nextToIndex);
     if (!toIndex) {
       return;
@@ -85,7 +84,7 @@ export const indexMemories = internalAction({
 
 export const nextToIndex = internalQuery({
   args: {},
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
     const memory = await ctx.db.query('memoriesToIndex').first();
     if (!memory) {
       return null;
