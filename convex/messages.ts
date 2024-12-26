@@ -17,7 +17,9 @@ async function requireUser(ctx: QueryCtx) {
 }
 
 export const list = query({
-  args: {},
+  args: {
+    conversationId: v.id('conversations'),
+  },
   returns: v.array(
     v.object({
       _id: v.id('messages'),
@@ -35,11 +37,14 @@ export const list = query({
       body: v.string(),
     })
   ),
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
     const currentUser = await requireUser(ctx);
-    const messages = await ctx.db.query('messages').order('desc').take(100);
+    const messages = await ctx.db
+      .query('messages')
+      .withIndex('by_conversation', (q) => q.eq('conversationId', args.conversationId))
+      .collect();
     const results = [];
-    for (const message of messages.reverse()) {
+    for (const message of messages) {
       if (message.agent.type === 'user') {
         const user = await ctx.db.get(message.agent.id);
         if (!user) {
@@ -70,6 +75,7 @@ export const list = query({
 
 export const send = mutation({
   args: {
+    conversationId: v.id('conversations'),
     body: v.string(),
   },
   handler: async (ctx, args) => {
@@ -80,18 +86,17 @@ export const send = mutation({
       body: args.body,
       agent: { id: user._id, type: 'user' },
       isComplete: true,
+      conversationId: args.conversationId,
     });
 
     const messageId = await ctx.db.insert('messages', {
       agent: { type: 'openai' },
       body: '...',
       isComplete: false,
+      conversationId: args.conversationId,
     });
-    // Schedule an action that calls ChatGPT and updates the message.
-    // Fetch the latest n messages to send as context.
-    // The default order is by creation time.
-    const messages = await ctx.db.query('messages').order('desc').take(10);
-    ctx.scheduler.runAfter(0, internal.ai.chat, { messageId });
+
+    ctx.scheduler.runAfter(0, internal.ai.chat, { conversationId: args.conversationId, messageId });
   },
 });
 

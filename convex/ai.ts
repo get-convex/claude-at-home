@@ -1,7 +1,9 @@
 import { v } from 'convex/values';
-import { internalAction, internalQuery } from './_generated/server';
+import { internalAction, internalMutation, internalQuery } from './_generated/server';
 import OpenAI from 'openai';
 import { internal } from './_generated/api';
+import { zodResponseFormat } from 'openai/helpers/zod';
+import { z } from 'zod';
 
 export const previousMessages = internalQuery({
   args: {
@@ -20,8 +22,26 @@ export const previousMessages = internalQuery({
     }
     const messages = await ctx.db
       .query('messages')
-      .withIndex('by_creation_time', (q) => q.lt('_creationTime', existing._creationTime))
-      .take(100);
+      .withIndex('by_conversation', (q) =>
+        q.eq('conversationId', existing.conversationId).lt('_creationTime', existing._creationTime)
+      )
+      .collect();
+    return messages.map((m) => ({
+      role: m.agent.type === 'user' ? ('user' as const) : ('assistant' as const),
+      content: m.body,
+    }));
+  },
+});
+
+export const allMessages = internalQuery({
+  args: {
+    conversationId: v.id('conversations'),
+  },
+  handler: async (ctx, args) => {
+    const messages = await ctx.db
+      .query('messages')
+      .withIndex('by_conversation', (q) => q.eq('conversationId', args.conversationId))
+      .collect();
     return messages.map((m) => ({
       role: m.agent.type === 'user' ? ('user' as const) : ('assistant' as const),
       content: m.body,
@@ -32,16 +52,15 @@ export const previousMessages = internalQuery({
 const SYSTEM_PROMPT = `
 You are a delightfully helpful assistant in a one-on-one chat. Be warm but succinct. 
 
-Your response must be in Markdown. The Markdown environment also supports LaTeX. You
-can either return inline LaTeX like $E = mc^2$ or block LaTeX like
-
-$$
-E = mc^2
-$$
+Your response must be in Markdown. The Markdown environment also supports LaTeX using
+KaTeX. Note that you MUST use $ for inline LaTeX and $$ for block LaTeX. KaTeX does 
+not support using \( \) or \[ \] for inline or block LaTeX. This is very important 
+since it will break rendering.
 `;
 
 export const chat = internalAction({
   args: {
+    conversationId: v.id('conversations'),
     messageId: v.id('messages'),
   },
   handler: async (ctx, args) => {
@@ -84,5 +103,55 @@ export const chat = internalAction({
         throw e;
       }
     }
+    const conversation = await ctx.runQuery(internal.ai.getConversation, {
+      conversationId: args.conversationId,
+    });
+    if (!conversation.name) {
+      const messages = await ctx.runQuery(internal.ai.allMessages, {
+        conversationId: args.conversationId,
+      });
+      const completion = await openai.beta.chat.completions.parse({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a chat assistant summarizing a conversation to create a title for the conversation in a chat app. Be succinct and return a string of no more than five words.`,
+          },
+          ...messages,
+        ],
+        response_format: zodResponseFormat(z.object({ title: z.string() }), 'title'),
+      });
+      const title = completion.choices[0].message.parsed?.title;
+      if (!title) {
+        throw new Error('No title found');
+      }
+      await ctx.runMutation(internal.ai.updateConversationName, {
+        conversationId: args.conversationId,
+        name: title,
+      });
+    }
+  },
+});
+
+export const getConversation = internalQuery({
+  args: {
+    conversationId: v.id('conversations'),
+  },
+  handler: async (ctx, args) => {
+    const conversation = await ctx.db.get(args.conversationId);
+    if (!conversation) {
+      throw new Error(`Conversation ${args.conversationId} not found`);
+    }
+    return conversation;
+  },
+});
+
+export const updateConversationName = internalMutation({
+  args: {
+    conversationId: v.id('conversations'),
+    name: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.conversationId, { name: args.name });
   },
 });

@@ -22,9 +22,15 @@ export default defineSchema({
     color: v.string(),
   }).index('by_clerk_id', ['clerkUser.id']),
 
+  conversations: defineTable({
+    name: v.optional(v.string()),
+    creatorId: v.id('users'),
+  }).index('by_creator', ['creatorId']),
+
   messages: defineTable({
     agent,
     body: v.string(),
     isComplete: v.boolean(),
-  }),
+    conversationId: v.id('conversations'),
+  }).index('by_conversation', ['conversationId']),
 });
