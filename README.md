@@ -52,9 +52,9 @@ Deploy to Convex again.
 bun run dev
 ```
 
-This app only allows users with a pre-approved email address. Go to the
-Convex dashboard and insert a row into `allowedEmails` with your Google
-account's email address.
+Since this app uses your OpenAI API key, it only allows users with pre-approved email addresses.
+You can either individually insert rows into the `allowedEmails` table in the Convex dashboard
+or set the `ALLOWED_DOMAIN` environment variable.
 
 Finally, let's try it end-to-end! Go to `localhost:5173`, log in and start chatting.
 
