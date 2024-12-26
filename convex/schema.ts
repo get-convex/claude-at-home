@@ -37,4 +37,30 @@ export default defineSchema({
     conversationId: v.id('conversations'),
     thinking: v.optional(v.string()),
   }).index('by_conversation', ['conversationId']),
+
+  memoriesToIndex: defineTable({
+    source: v.union(
+      v.object({
+        type: v.literal('message'),
+        messageId: v.id('messages'),
+      })
+    ),
+  }).index('by_source', ['source']),
+
+  memories: defineTable({
+    userId: v.id('users'),
+    source: v.union(
+      v.object({
+        type: v.literal('message'),
+        messageId: v.id('messages'),
+      })
+    ),
+    body: v.array(v.float64()),
+  })
+    .vectorIndex('body', {
+      dimensions: 1536,
+      filterFields: ['userId'],
+      vectorField: 'body',
+    })
+    .index('by_source', ['source']),
 });

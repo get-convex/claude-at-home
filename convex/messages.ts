@@ -26,7 +26,7 @@ export const list = query({
     })
   ),
   handler: async (ctx, args) => {
-    await User.mustGet(ctx);
+    await User.mustBeLoggedIn(ctx);
     const results = await Messages.list(ctx, args.conversationId);
     return results;
   },
@@ -38,8 +38,7 @@ export const send = mutation({
     body: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await User.mustGet(ctx);
+    const user = await User.mustBeLoggedIn(ctx);
     await Messages.sendUserMessage(ctx, args.conversationId, user._id, args.body);
   },
 });
-

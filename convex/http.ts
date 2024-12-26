@@ -60,7 +60,7 @@ async function validateRequest(req: Request): Promise<WebhookEvent | undefined> 
 
 export const handleUpdated = internalMutation({
   args: {
-    event: v.any()
+    event: v.any(),
   },
   handler: async (ctx, args) => {
     const { event } = args;
@@ -85,5 +85,5 @@ export const handleUpdated = internalMutation({
         console.log('ignored Clerk webhook event', event.type);
       }
     }
-  }
-})
+  },
+});

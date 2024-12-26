@@ -12,22 +12,25 @@ export class User {
       return null;
     }
     const emailAddreses = user.clerkUser.email_addresses
-      .filter((entry: any) => entry.verification.status === "verified")
+      .filter((entry: any) => entry.verification.status === 'verified')
       .map((entry: any) => entry.email_address);
 
     let anyAllowed = false;
     for (const email of emailAddreses) {
-      const allowedEmail = await ctx.db.query('allowedEmails').withIndex('by_email', (q) => q.eq('email', email)).unique();
+      const allowedEmail = await ctx.db
+        .query('allowedEmails')
+        .withIndex('by_email', (q) => q.eq('email', email))
+        .unique();
       anyAllowed = anyAllowed || allowedEmail !== null;
     }
     if (!anyAllowed) {
-      console.log("user not allowed", user.clerkUser);
+      console.log('user not allowed', user.clerkUser);
       return null;
     }
     return user as AuthenticatedUser;
   }
 
-  static async get(ctx: QueryCtx): Promise<AuthenticatedUser | null> {
+  static async loggedIn(ctx: QueryCtx): Promise<AuthenticatedUser | null> {
     const identity = await ctx.auth.getUserIdentity();
     if (identity === null) {
       return null;
@@ -35,14 +38,14 @@ export class User {
     return await this.getBySubject(ctx, identity.subject);
   }
 
-  static async mustGet(ctx: QueryCtx): Promise<AuthenticatedUser> {
-    const user = await this.get(ctx);
+  static async mustBeLoggedIn(ctx: QueryCtx): Promise<AuthenticatedUser> {
+    const user = await this.loggedIn(ctx);
     if (!user) throw new Error("Can't get current user");
     return user;
   }
 
   static async updateOrCreate(ctx: MutationCtx, clerkUser: UserJSON): Promise<void> {
-    const userRecord = await this.get(ctx);
+    const userRecord = await this.loggedIn(ctx);
     if (userRecord === null) {
       await ctx.db.insert('users', { clerkUser });
     } else {
@@ -50,8 +53,8 @@ export class User {
     }
   }
 
-  static async remove(ctx: MutationCtx, id: Id<"users">): Promise<void> {
-    const existing = await this.get(ctx);
+  static async remove(ctx: MutationCtx, id: Id<'users'>): Promise<void> {
+    const existing = await this.loggedIn(ctx);
     if (existing === null) {
       console.warn("can't delete user, does not exist", id);
       return;
@@ -60,4 +63,6 @@ export class User {
   }
 }
 
-export type AuthenticatedUser = Omit<Doc<'users'>, 'clerkUser'> & { clerkUser: UserJSON; } & { __brand: "AuthenticatedUser"; };
+export type AuthenticatedUser = Omit<Doc<'users'>, 'clerkUser'> & { clerkUser: UserJSON } & {
+  __brand: 'AuthenticatedUser';
+};

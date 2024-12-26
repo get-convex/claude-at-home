@@ -1,17 +1,17 @@
 {
-  "name": "pooja-chat",
+  "name": "claude-at-home",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "npm-run-all --parallel dev:frontend dev:backend",
-    "dev:frontend": "bunx --bun vite --open",
-    "dev:backend": "bunx --bun convex dev",
-    "predev": "bunx --bun convex dev --until-success && bunx --bun convex dashboard",
-    "build": "bun run tsc && bunx --bun vite build",
-    "lint": "bun run tsc && bunx --bun eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "bunx --bun vite preview",
-    "format": "bunx --bun prettier --write ."
+    "dev:frontend": "vite",
+    "dev:backend": "convex dev",
+    "predev": "convex dev --until-success",
+    "build": "tsc && vite build",
+    "lint": "tsc && eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview",
+    "format": "prettier --write ."
   },
   "dependencies": {
     "@clerk/backend": "^1.21.4",
@@ -44,6 +44,7 @@
     "@radix-ui/react-toast": "^1.1.5",
     "@radix-ui/react-toggle": "^1.0.3",
     "@radix-ui/react-tooltip": "^1.0.7",
+    "@types/react-syntax-highlighter": "^15.5.13",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "cmdk": "^0.2.0",
@@ -57,6 +58,7 @@
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.47.0",
     "react-markdown": "^9.0.1",
+    "react-syntax-highlighter": "^15.6.1",
     "rehype-katex": "^7.0.1",
     "remark-gfm": "^4.0.0",
     "remark-math": "^6.0.0",

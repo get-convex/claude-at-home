@@ -1,5 +1,5 @@
 import { Send } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
@@ -10,7 +10,26 @@ interface ChatInputProps {
 
 export function ChatInput({ conversationId }: ChatInputProps) {
   const [newMessageText, setNewMessageText] = useState('');
+  const divRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const sendMessage = useMutation(api.messages.send);
+
+  const adjustTextareaHeight = () => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    }
+    const div = divRef.current;
+    if (div && textarea) {
+      div.style.height = `auto`;
+      div.style.height = `${textarea.scrollHeight}px`;
+    }
+  };
+
+  useEffect(() => {
+    adjustTextareaHeight();
+  }, [newMessageText]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,12 +43,22 @@ export function ChatInput({ conversationId }: ChatInputProps) {
   return (
     <div className="bg-gradient-to-t from-white dark:from-gray-900 pt-6 pb-8">
       <form onSubmit={handleSubmit} className="max-w-3xl mx-auto px-4">
-        <div className="relative">
-          <input
+        <div className="relative" ref={divRef}>
+          <textarea
+            ref={textareaRef}
             value={newMessageText}
             onChange={(e) => setNewMessageText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (newMessageText.trim()) {
+                  handleSubmit(e);
+                }
+              }
+            }}
             placeholder="Write a message…"
-            className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3 pr-12 text-sm focus:border-blue-600 dark:focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-600 dark:focus:ring-blue-400 dark:text-gray-100 dark:placeholder-gray-400"
+            rows={1}
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3 pr-12 text-sm focus:border-blue-600 dark:focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-600 dark:focus:ring-blue-400 dark:text-gray-100 dark:placeholder-gray-400 resize-none overflow-hidden min-h-[44px] max-h-[200px]"
           />
           <button
             type="submit"

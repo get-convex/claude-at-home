@@ -1,7 +1,7 @@
 import { internal } from '../_generated/api';
 import { Id } from '../_generated/dataModel';
 import { QueryCtx, MutationCtx } from '../_generated/server';
-
+import { Memories } from './Memories';
 
 export class Messages {
   static async list(ctx: QueryCtx, conversationId: Id<'conversations'>) {
@@ -38,23 +38,33 @@ export class Messages {
     return results;
   }
 
-  static async sendUserMessage(ctx: MutationCtx, conversationId: Id<'conversations'>, userId: Id<'users'>, body: string) {
-    await ctx.db.insert('messages', {
+  static async sendUserMessage(
+    ctx: MutationCtx,
+    conversationId: Id<'conversations'>,
+    userId: Id<'users'>,
+    body: string
+  ) {
+    const userMessageId = await ctx.db.insert('messages', {
       body,
       agent: { id: userId, type: 'user' },
       isComplete: true,
       conversationId,
     });
-    const messageId = await ctx.db.insert('messages', {
+    await Memories.queueForIndexing(ctx, { type: 'message', messageId: userMessageId });
+    const aiMessageId = await ctx.db.insert('messages', {
       agent: { type: 'openai' },
       body: '...',
       isComplete: false,
       conversationId,
     });
-    ctx.scheduler.runAfter(0, internal.ai.chat, { conversationId, messageId });
+    ctx.scheduler.runAfter(0, internal.ai.chat, { conversationId, messageId: aiMessageId });
   }
 
-  static async update(ctx: MutationCtx, messageId: Id<'messages'>, patch: { body?: string; isComplete?: boolean; }) {
+  static async update(
+    ctx: MutationCtx,
+    messageId: Id<'messages'>,
+    patch: { body?: string; isComplete?: boolean }
+  ) {
     const existing = await ctx.db.get(messageId);
     if (!existing) {
       throw new Error(`Message ${messageId} not found`);
@@ -65,6 +75,14 @@ export class Messages {
     if (patch.body !== undefined) {
       await ctx.db.patch(messageId, { body: patch.body });
     }
+    if (patch.isComplete) {
+      await Memories.queueForIndexing(ctx, { type: 'message', messageId });
+    }
     await ctx.db.patch(messageId, patch);
+  }
+
+  static async remove(ctx: MutationCtx, messageId: Id<'messages'>) {
+    await Memories.removeForMessage(ctx, messageId);
+    await ctx.db.delete(messageId);
   }
 }

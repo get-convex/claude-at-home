@@ -8,7 +8,7 @@ export const create = mutation({
     name: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await User.mustGet(ctx);
+    const user = await User.mustBeLoggedIn(ctx);
     const conversation = await Conversations.create(ctx, user._id, args.name);
     return conversation;
   },
@@ -17,7 +17,7 @@ export const create = mutation({
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const user = await User.mustGet(ctx);
+    const user = await User.mustBeLoggedIn(ctx);
     const allMessages = await Conversations.list(ctx, user._id);
     allMessages.sort((a, b) => b._creationTime - a._creationTime);
     return allMessages;
@@ -30,7 +30,7 @@ export const update = mutation({
     name: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await User.mustGet(ctx);
+    const user = await User.mustBeLoggedIn(ctx);
     const conversation = await Conversations.get(ctx, args.id);
     if (!conversation) {
       throw new Error('Conversation not found');
@@ -47,7 +47,7 @@ export const remove = mutation({
     id: v.id('conversations'),
   },
   handler: async (ctx, args) => {
-    const user = await User.mustGet(ctx);
+    const user = await User.mustBeLoggedIn(ctx);
     const conversation = await Conversations.get(ctx, args.id);
     if (!conversation) {
       throw new Error('Conversation not found');
