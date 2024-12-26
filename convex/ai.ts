@@ -12,16 +12,26 @@ import {
   ChatCompletionMessageParam,
   ChatCompletionTool,
 } from 'openai/resources/index.mjs';
-import { openai } from './lib/openai';
+import { openaiClient } from './lib/openai';
 import { Memories } from './model/Memories';
+import { tavilyClient } from './lib/tavily';
+import { ToolUse } from './model/ToolUse';
 
 const SYSTEM_PROMPT = `
-You are a delightfully helpful assistant in a one-on-one chat. Be warm but succinct. 
+You are a delightfully helpful assistant in a one-on-one English chat. Be warm but succinct. 
+You are definitely not lame, though, so please don't use happy or excited emojis
+at the end of your messages.
 
 This chat app supports memories, where you can query memories using OpenAI's embedding
 model and a nearest neighbor search. Use the "query_memory" tool to search for memories
 if you believe it will help the conversation. Be aware that the memories may not
 be that relevant to the conversation.
+
+You also have access to the Tavily API with a few tools. First, use the "tavilySearch"
+tool to search the web for a particular search term. Second, use the "tavilyQna" tool
+to ask the web a particular question. Finally, use the "tavilyExtract" tool to
+extract content from a list of URLs. Again, only use these tools if you believe
+that they will help the conversation.
 
 Your response must be in Markdown. The Markdown environment also supports LaTeX using
 KaTeX. Note that you MUST use $ for inline LaTeX and $$ for block LaTeX. KaTeX does 
@@ -33,12 +43,54 @@ const queryMemoryParameters = z.object({
   query: z.string(),
 });
 
+const tavilySearchOptions = z.object({
+  searchDepth: z.enum(['basic', 'advanced']).optional(),
+  topic: z.enum(['general', 'news', 'finance']).optional(),
+  days: z.number().optional(),
+  maxResults: z.number().optional(),
+  includeImages: z.boolean().optional(),
+  includeImageDescriptions: z.boolean().optional(),
+  includeAnswer: z.boolean().optional(),
+  includeRawContent: z.boolean().optional(),
+});
+
+const tavilySearchParameters = z.object({
+  query: z.string(),
+  options: tavilySearchOptions,
+});
+
+const tavilyQnaParameters = z.object({
+  query: z.string(),
+  options: tavilySearchOptions,
+});
+
+const tavilyExtractParameters = z.object({
+  urls: z.array(z.string()),
+});
+
+const openai = openaiClient();
+
 const tools: Array<ChatCompletionTool> = [
   zodFunction({
     name: 'queryMemory',
     parameters: queryMemoryParameters,
     description:
       'Issue a semantic search query over all previous memories. The query string will be embedded, and the query will return the content of the 15 memories closest in embedding space.',
+  }),
+  zodFunction({
+    name: 'tavilySearch',
+    parameters: tavilySearchParameters,
+    description: 'Search the web for a particular search term.',
+  }),
+  zodFunction({
+    name: 'tavilyQna',
+    parameters: tavilyQnaParameters,
+    description: 'Ask the web a particular question.',
+  }),
+  zodFunction({
+    name: 'tavilyExtract',
+    parameters: tavilyExtractParameters,
+    description: 'Extract content from a list of URLs.',
   }),
 ];
 
@@ -63,71 +115,80 @@ async function streamChat(context: Array<ChatCompletionMessageParam>) {
   }
   let chunk = firstChunk.value;
   if (chunk.choices[0].delta.tool_calls) {
-    let functionName = null;
-    let functionArgs = '';
-    let callId = null;
+    const firstDelta = chunk.choices[0].delta;
+    if (!firstDelta.tool_calls) {
+      throw new Error('Missing tool call after starting tool call?');
+    }
+    if (firstDelta.tool_calls.length > 1) {
+      throw new Error('Multiple tool calls in a single message are not supported');
+    }
+    const toolCall = firstDelta.tool_calls[0];
+    if (!toolCall.function?.name) {
+      throw new Error('No function name in tool call');
+    }
+    if (!toolCall.id) {
+      throw new Error('No tool call ID in tool call');
+    }
+    const callId = toolCall.id;
 
-    while (true) {
-      const delta = chunk.choices[0].delta;
-      if (delta.content) {
-        throw new Error('Content in tool call');
-      }
-      const finishReason = chunk.choices[0].finish_reason;
-      if (finishReason !== null) {
-        if (finishReason !== 'tool_calls') {
-          throw new Error(`Unexpected finish reason: ${finishReason}`);
+    async function* streamToolCall(chunk: ChatCompletionChunk) {
+      let functionArgs = '';
+      while (true) {
+        const delta = chunk.choices[0].delta;
+        if (delta.content) {
+          throw new Error('Content in tool call');
         }
-        break;
+        const finishReason = chunk.choices[0].finish_reason;
+        if (finishReason !== null) {
+          if (finishReason !== 'tool_calls') {
+            throw new Error(`Unexpected finish reason: ${finishReason}`);
+          }
+          break;
+        }
+        if (!delta.tool_calls) {
+          throw new Error('Missing tool call after starting tool call?');
+        }
+        if (delta.tool_calls.length > 1) {
+          throw new Error('Multiple tool calls in a single message are not supported');
+        }
+        const toolCall = delta.tool_calls[0];
+        if (toolCall.function?.arguments) {
+          functionArgs += toolCall.function.arguments;
+          yield functionArgs;
+        }
+        const nextChunk = await iter.next();
+        if (nextChunk.done) {
+          throw new Error('Tool call did not finish');
+        }
+        chunk = nextChunk.value;
       }
-      if (!delta.tool_calls) {
-        throw new Error('Missing tool call after starting tool call?');
-      }
-      if (delta.tool_calls.length > 1) {
-        throw new Error('Multiple tool calls in a single message are not supported');
-      }
-      const toolCall = delta.tool_calls[0];
-      if (toolCall.function?.name) {
-        functionName = toolCall.function.name;
-      }
-      if (toolCall.function?.arguments) {
-        functionArgs += toolCall.function.arguments;
-      }
-      if (toolCall.id) {
-        callId = toolCall.id;
-      }
-      const nextChunk = await iter.next();
-      if (nextChunk.done) {
-        throw new Error('Tool call did not finish');
-      }
-      chunk = nextChunk.value;
+      yield functionArgs;
     }
-    if (!callId) {
-      throw new Error('Tool call did not provide a call ID');
-    }
+
     return {
       type: 'toolCall' as const,
-      functionName,
-      functionArgs,
+      functionName: toolCall.function.name,
+      functionArgs: streamToolCall(chunk),
       callId,
     };
-  }
-
-  async function* streamChat(chunk: ChatCompletionChunk) {
-    let body = '';
-    while (true) {
-      if (chunk.choices[0].delta.content) {
-        body += chunk.choices[0].delta.content;
-        yield body;
+  } else {
+    async function* streamChat(chunk: ChatCompletionChunk) {
+      let body = '';
+      while (true) {
+        if (chunk.choices[0].delta.content) {
+          body += chunk.choices[0].delta.content;
+          yield body;
+        }
+        const nextChunk = await iter.next();
+        if (nextChunk.done) {
+          break;
+        }
+        chunk = nextChunk.value;
       }
-      const nextChunk = await iter.next();
-      if (nextChunk.done) {
-        break;
-      }
-      chunk = nextChunk.value;
+      yield body;
     }
-    yield body;
+    return { type: 'message' as const, stream: streamChat(chunk) };
   }
-  return { type: 'message' as const, stream: streamChat(chunk) };
 }
 
 export const chat = internalAction({
@@ -153,10 +214,24 @@ export const chat = internalAction({
       while (true) {
         const result = await streamChat(context);
         if (result.type === 'toolCall') {
-          console.log('Executing tool call', result);
-          if (result.functionName !== 'queryMemory') {
-            throw new Error(`Unexpected tool call: ${result.functionName}`);
+          if (!result.functionName) {
+            throw new Error('No function name in tool call');
           }
+          const toolUseId = await ctx.runMutation(internal.ai.startToolUse, {
+            messageId: args.messageId,
+            toolName: result.functionName,
+          });
+          let toolArgs = '';
+          for await (const snapshot of result.functionArgs) {
+            toolArgs = snapshot;
+            await ctx.runMutation(internal.ai.setToolUseArguments, {
+              id: toolUseId,
+              args: toolArgs,
+            });
+          }
+          await ctx.runMutation(internal.ai.setToolUseInProgress, {
+            id: toolUseId,
+          });
           context.push({
             role: 'assistant',
             content: null,
@@ -166,20 +241,72 @@ export const chat = internalAction({
                 id: result.callId,
                 function: {
                   name: result.functionName,
-                  arguments: result.functionArgs,
+                  arguments: toolArgs,
                 },
               },
             ],
           });
-          const { query } = queryMemoryParameters.parse(JSON.parse(result.functionArgs));
-          const memories = await Memories.query(ctx, conversation.creatorId, query);
-          console.log('Result:', memories);
-          context.push({
-            role: 'tool',
-            content: JSON.stringify(memories),
-            tool_call_id: result.callId,
-          });
-          continue;
+          if (result.functionName === 'queryMemory') {
+            const { query } = queryMemoryParameters.parse(JSON.parse(toolArgs));
+            const memories = await Memories.query(ctx, conversation.creatorId, query);
+            console.log('Result:', memories);
+            context.push({
+              role: 'tool',
+              content: JSON.stringify(memories),
+              tool_call_id: result.callId,
+            });
+            await ctx.runMutation(internal.ai.setToolUseSuccess, {
+              id: toolUseId,
+              result: JSON.stringify(memories),
+            });
+            continue;
+          } else if (result.functionName === 'tavilySearch') {
+            const tvly = tavilyClient();
+            const { query, options } = tavilySearchParameters.parse(JSON.parse(toolArgs));
+            const searchResult = await tvly.search(query, options);
+            context.push({
+              role: 'tool',
+              content: JSON.stringify(searchResult),
+              tool_call_id: result.callId,
+            });
+            await ctx.runMutation(internal.ai.setToolUseSuccess, {
+              id: toolUseId,
+              result: JSON.stringify(searchResult),
+            });
+            continue;
+          } else if (result.functionName === 'tavilyQna') {
+            const tvly = tavilyClient();
+            const { query, options } = tavilyQnaParameters.parse(JSON.parse(toolArgs));
+            const qnaResult = await tvly.searchQNA(query, options);
+            console.log('Result:', qnaResult);
+            context.push({
+              role: 'tool',
+              content: JSON.stringify(qnaResult),
+              tool_call_id: result.callId,
+            });
+            await ctx.runMutation(internal.ai.setToolUseSuccess, {
+              id: toolUseId,
+              result: JSON.stringify(qnaResult),
+            });
+            continue;
+          } else if (result.functionName === 'tavilyExtract') {
+            const tvly = tavilyClient();
+            const { urls } = tavilyExtractParameters.parse(JSON.parse(toolArgs));
+            const extractResult = await tvly.extract(urls);
+            console.log('Result:', extractResult);
+            context.push({
+              role: 'tool',
+              content: JSON.stringify(extractResult),
+              tool_call_id: result.callId,
+            });
+            await ctx.runMutation(internal.ai.setToolUseSuccess, {
+              id: toolUseId,
+              result: JSON.stringify(extractResult),
+            });
+            continue;
+          } else {
+            throw new Error(`Unexpected tool call: ${result.functionName}`);
+          }
         } else if (result.type === 'message') {
           for await (const part of result.stream) {
             await ctx.runMutation(internal.ai.streamMessage, {
@@ -295,5 +422,44 @@ export const updateConversationName = internalMutation({
   },
   handler: async (ctx, args) => {
     await Conversations.updateName(ctx, args.conversationId, args.name);
+  },
+});
+
+export const startToolUse = internalMutation({
+  args: {
+    messageId: v.id('messages'),
+    toolName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await ToolUse.start(ctx, args.messageId, args.toolName);
+  },
+});
+
+export const setToolUseArguments = internalMutation({
+  args: {
+    id: v.id('toolUsage'),
+    args: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ToolUse.setArguments(ctx, args.id, args.args);
+  },
+});
+
+export const setToolUseInProgress = internalMutation({
+  args: {
+    id: v.id('toolUsage'),
+  },
+  handler: async (ctx, args) => {
+    await ToolUse.setInProgress(ctx, args.id);
+  },
+});
+
+export const setToolUseSuccess = internalMutation({
+  args: {
+    id: v.id('toolUsage'),
+    result: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ToolUse.setSuccess(ctx, args.id, args.result);
   },
 });

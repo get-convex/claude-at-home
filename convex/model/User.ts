@@ -4,14 +4,12 @@ import { MutationCtx, QueryCtx } from '../_generated/server';
 
 async function allowedEmail(ctx: QueryCtx, emailAddress: string): Promise<boolean> {
   if (process.env.ALLOWED_DOMAIN && emailAddress.endsWith(`@${process.env.ALLOWED_DOMAIN}`)) {
-    console.log('allowed email', emailAddress);
     return true;
   }
   const allowedEmail = await ctx.db
     .query('allowedEmails')
     .withIndex('by_email', (q) => q.eq('email', emailAddress))
     .unique();
-  console.log('allowEmail', emailAddress, allowedEmail);
   return allowedEmail !== null;
 }
 

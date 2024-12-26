@@ -38,6 +38,28 @@ export default defineSchema({
     thinking: v.optional(v.string()),
   }).index('by_conversation', ['conversationId']),
 
+  toolUsage: defineTable({
+    messageId: v.id('messages'),
+    toolName: v.string(),
+    toolArgs: v.string(),
+    status: v.union(
+      v.object({
+        type: v.literal('generating'),
+      }),
+      v.object({
+        type: v.literal('inProgress'),
+      }),
+      v.object({
+        type: v.literal('success'),
+        result: v.string(),
+      }),
+      v.object({
+        type: v.literal('error'),
+        error: v.string(),
+      })
+    ),
+  }).index('by_message', ['messageId']),
+
   memoriesToIndex: defineTable({
     source: v.union(
       v.object({

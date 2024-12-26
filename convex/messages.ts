@@ -3,6 +3,7 @@ import { query } from './_generated/server';
 import { v } from 'convex/values';
 import { User } from './model/User';
 import { Messages } from './model/Messages';
+import { ToolUse } from './model/ToolUse';
 
 export const list = query({
   args: {
@@ -40,5 +41,27 @@ export const send = mutation({
   handler: async (ctx, args) => {
     const user = await User.mustBeLoggedIn(ctx);
     await Messages.sendUserMessage(ctx, args.conversationId, user._id, args.body);
+  },
+});
+
+
+export const listToolUses = query({
+  args: {
+    messageId: v.id('messages'),
+  },
+  handler: async (ctx, args) => {
+    const user = await User.mustBeLoggedIn(ctx);
+    const message = await ctx.db.get(args.messageId);
+    if (!message) {
+      throw new Error('Message not found');
+    }
+    const conversation = await ctx.db.get(message.conversationId);
+    if (!conversation) {
+      throw new Error('Conversation not found');
+    }
+    if (conversation.creatorId !== user._id) {
+      throw new Error('You are not allowed to view this conversation');
+    }
+    return await ToolUse.list(ctx, args.messageId);
   },
 });

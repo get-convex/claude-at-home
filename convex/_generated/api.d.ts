@@ -18,10 +18,12 @@ import type * as auth from "../auth.js";
 import type * as conversations from "../conversations.js";
 import type * as http from "../http.js";
 import type * as lib_openai from "../lib/openai.js";
+import type * as lib_tavily from "../lib/tavily.js";
 import type * as messages from "../messages.js";
 import type * as model_Conversations from "../model/Conversations.js";
 import type * as model_Memories from "../model/Memories.js";
 import type * as model_Messages from "../model/Messages.js";
+import type * as model_ToolUse from "../model/ToolUse.js";
 import type * as model_User from "../model/User.js";
 
 /**
@@ -38,10 +40,12 @@ declare const fullApi: ApiFromModules<{
   conversations: typeof conversations;
   http: typeof http;
   "lib/openai": typeof lib_openai;
+  "lib/tavily": typeof lib_tavily;
   messages: typeof messages;
   "model/Conversations": typeof model_Conversations;
   "model/Memories": typeof model_Memories;
   "model/Messages": typeof model_Messages;
+  "model/ToolUse": typeof model_ToolUse;
   "model/User": typeof model_User;
 }>;
 export declare const api: FilterApi<
