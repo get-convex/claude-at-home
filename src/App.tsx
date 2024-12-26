@@ -45,7 +45,7 @@ export default function App() {
           </div>
           <div className="flex flex-col">
             <h1 className="text-4xl font-extrabold my-8 text-center text-gray-800 dark:text-gray-100">
-              🍓 Chat for Pooj & Suj
+              {import.meta.env.VITE_CHAT_TITLE ?? '"We have Claude at home"'}
             </h1>
             <hr className="border-gray-200 dark:border-gray-700" />
           </div>
