@@ -30,6 +30,35 @@ export class User {
     return user as AuthenticatedUser;
   }
 
+  static async loggedInStatus(ctx: QueryCtx): Promise<"No JWT token" | "No Clerk user" | "Disallowed email" | "Logged in"> {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) {
+      return "No JWT token";
+    }
+    const user = await ctx.db
+      .query('users')
+      .withIndex('by_clerk_id', (q) => q.eq('clerkUser.id', identity.subject))
+      .unique();
+    if (!user) {
+      return "No Clerk user";
+    }
+    const emailAddreses = user.clerkUser.email_addresses
+      .filter((entry: any) => entry.verification.status === 'verified')
+      .map((entry: any) => entry.email_address);
+    let anyAllowed = false;
+    for (const email of emailAddreses) {
+      const allowedEmail = await ctx.db
+        .query('allowedEmails')
+        .withIndex('by_email', (q) => q.eq('email', email))
+        .unique();
+      anyAllowed = anyAllowed || allowedEmail !== null;
+    }
+    if (!anyAllowed) {
+      return 'Disallowed email';
+    }
+    return 'Logged in';
+  }
+
   static async loggedIn(ctx: QueryCtx): Promise<AuthenticatedUser | null> {
     const identity = await ctx.auth.getUserIdentity();
     if (identity === null) {
