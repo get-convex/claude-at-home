@@ -16,10 +16,13 @@ const agent = v.union(
 );
 
 export default defineSchema({
+  allowedEmails: defineTable({
+    email: v.string(),
+  }).index('by_email', ['email']),
+
   users: defineTable({
     // this is UserJSON from @clerk/backend
     clerkUser: v.any(),
-    color: v.string(),
   }).index('by_clerk_id', ['clerkUser.id']),
 
   conversations: defineTable({
@@ -32,5 +35,6 @@ export default defineSchema({
     body: v.string(),
     isComplete: v.boolean(),
     conversationId: v.id('conversations'),
+    thinking: v.optional(v.string()),
   }).index('by_conversation', ['conversationId']),
 });
