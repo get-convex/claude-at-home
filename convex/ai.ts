@@ -23,6 +23,11 @@ model and a nearest neighbor search. Use the "query_memory" tool to search for m
 if you believe it will help the conversation. Be aware that the memories may not
 be that relevant to the conversation.
 
+You can also execute Python code using the "executePython" tool. This will execute the
+code in the pyodide environment. You can install common libraries using 
+pyodide.loadPackage() or micropip.install(). Use this tool when you're trying to do
+something precise, like computing a value.
+
 Your response must be in Markdown. The Markdown environment also supports LaTeX using
 KaTeX. Note that you MUST use $ for inline LaTeX and $$ for block LaTeX. KaTeX does 
 not support using \( \) or \[ \] for inline or block LaTeX. This is very important 
@@ -39,6 +44,13 @@ const tools: Array<ChatCompletionTool> = [
     parameters: queryMemoryParameters,
     description:
       'Issue a semantic search query over all previous memories. The query string will be embedded, and the query will return the content of the 15 memories closest in embedding space.',
+  }),
+  zodFunction({
+    name: 'executePython',
+    parameters: z.object({
+      code: z.string(),
+    }),
+    description: 'Execute Python code and receive the return code, stdout, and stderr.',
   }),
 ];
 
