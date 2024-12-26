@@ -8,7 +8,7 @@ import {
   internalQuery,
   MutationCtx,
 } from '../_generated/server';
-import { openai } from '../openai';
+import { computeEmbedding } from '../lib/openai';
 
 export type Source = {
   type: 'message';
@@ -20,21 +20,17 @@ export class Memories {
     await ctx.db.insert('memoriesToIndex', {
       source,
     });
-    await ctx.scheduler.runAfter(0, internal.lib.Memories.indexMemories, {});
+    await ctx.scheduler.runAfter(0, internal.model.Memories.indexMemories, {});
   }
 
   static async query(ctx: ActionCtx, userId: Id<'users'>, query: string) {
-    const response = await openai.embeddings.create({
-      input: query,
-      model: 'text-embedding-3-small',
-    });
-    const embedding = response.data[0].embedding;
+    const embedding = await computeEmbedding(query);
     const memories = await ctx.vectorSearch('memories', 'body', {
       vector: embedding,
       limit: 15,
       filter: (q) => q.eq('userId', userId),
     });
-    return ctx.runQuery(internal.lib.Memories.enrichMemories, {
+    return ctx.runQuery(internal.model.Memories.enrichMemories, {
       userId,
       results: memories,
     });
@@ -61,23 +57,20 @@ export class Memories {
 export const indexMemories = internalAction({
   args: {},
   handler: async (ctx) => {
-    const toIndex = await ctx.runQuery(internal.lib.Memories.nextToIndex);
+    const toIndex = await ctx.runQuery(internal.model.Memories.nextToIndex);
     if (!toIndex) {
       return;
     }
     const { indexId, body } = toIndex;
-    const embedding = await openai.embeddings.create({
-      input: body,
-      model: 'text-embedding-3-small',
-    });
-    await ctx.runMutation(internal.lib.Memories.addMemory, {
+    const embedding = await computeEmbedding(body);
+    await ctx.runMutation(internal.model.Memories.addMemory, {
       indexId,
       userId: toIndex.userId,
       source: {
         type: 'message',
         messageId: toIndex.messageId,
       },
-      body: embedding.data[0].embedding,
+      body: embedding,
     });
   },
 });

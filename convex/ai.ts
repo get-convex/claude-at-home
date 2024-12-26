@@ -4,16 +4,16 @@ import OpenAI from 'openai';
 import { internal } from './_generated/api';
 import { zodFunction, zodResponseFormat } from 'openai/helpers/zod';
 import { z } from 'zod';
-import { Conversations } from './lib/Conversations';
+import { Conversations } from './model/Conversations';
 import { Doc } from './_generated/dataModel';
-import { Messages } from './lib/Messages';
+import { Messages } from './model/Messages';
 import {
   ChatCompletionChunk,
   ChatCompletionMessageParam,
   ChatCompletionTool,
 } from 'openai/resources/index.mjs';
-import { openai } from './openai';
-import { Memories } from './lib/Memories';
+import { openai } from './lib/openai';
+import { Memories } from './model/Memories';
 
 const SYSTEM_PROMPT = `
 You are a delightfully helpful assistant in a one-on-one chat. Be warm but succinct. 

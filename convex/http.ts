@@ -3,7 +3,7 @@ import { httpAction, internalMutation } from './_generated/server';
 import { internal } from './_generated/api';
 import type { WebhookEvent } from '@clerk/backend';
 import { Webhook } from 'svix';
-import { User } from './lib/User';
+import { User } from './model/User';
 import { v } from 'convex/values';
 
 function ensureEnvironmentVariable(name: string): string {
@@ -50,8 +50,8 @@ async function validateRequest(req: Request): Promise<WebhookEvent | undefined> 
   let evt: Event | null = null;
   try {
     evt = wh.verify(payloadString, svixHeaders) as Event;
-  } catch (_) {
-    console.log('error verifying');
+  } catch (e) {
+    console.error('Error verifying Clerk webhook', e);
     return;
   }
 

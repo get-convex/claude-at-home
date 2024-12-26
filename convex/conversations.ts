@@ -1,7 +1,7 @@
 import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
-import { User } from './lib/User';
-import { Conversations } from './lib/Conversations';
+import { User } from './model/User';
+import { Conversations } from './model/Conversations';
 
 export const create = mutation({
   args: {

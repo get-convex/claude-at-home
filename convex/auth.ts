@@ -1,5 +1,5 @@
 import { query } from "./_generated/server";
-import { User } from "./lib/User";
+import { User } from "./model/User";
 
 export const currentUser = query({
   handler: async (ctx) => {

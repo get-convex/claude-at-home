@@ -1,8 +1,8 @@
 import { mutation } from './_generated/server';
 import { query } from './_generated/server';
 import { v } from 'convex/values';
-import { User } from './lib/User';
-import { Messages } from './lib/Messages';
+import { User } from './model/User';
+import { Messages } from './model/Messages';
 
 export const list = query({
   args: {
