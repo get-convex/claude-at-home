@@ -11,7 +11,7 @@ function WaitForAuth(props: { children: React.ReactNode }) {
   if (status === 'Logged in') {
     return <>{props.children}</>;
   }
-  let message: string;
+  let message = '';
   if (status === undefined) {
     message = 'Waiting for login...';
   } else if (status === 'No JWT token') {
