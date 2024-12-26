@@ -2,6 +2,30 @@ import { UserJSON } from '@clerk/backend';
 import { Doc, Id } from '../_generated/dataModel';
 import { MutationCtx, QueryCtx } from '../_generated/server';
 
+async function allowedEmail(ctx: QueryCtx, emailAddress: string): Promise<boolean> {
+  if (process.env.ALLOWED_DOMAIN && emailAddress.endsWith(`@${process.env.ALLOWED_DOMAIN}`)) {
+    console.log('allowed email', emailAddress);
+    return true;
+  }
+  const allowedEmail = await ctx.db
+    .query('allowedEmails')
+    .withIndex('by_email', (q) => q.eq('email', emailAddress))
+    .unique();
+  console.log('allowEmail', emailAddress, allowedEmail);
+  return allowedEmail !== null;
+}
+
+async function anyEmailAllowed(ctx: QueryCtx, clerkUser: UserJSON): Promise<boolean> {
+  for (const email of clerkUser.email_addresses) {
+    if (email.verification?.status === 'verified') {
+      if (await allowedEmail(ctx, email.email_address)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 export class User {
   static async getBySubject(ctx: QueryCtx, subject: string): Promise<AuthenticatedUser | null> {
     const user = await ctx.db
@@ -11,18 +35,7 @@ export class User {
     if (!user) {
       return null;
     }
-    const emailAddreses = user.clerkUser.email_addresses
-      .filter((entry: any) => entry.verification.status === 'verified')
-      .map((entry: any) => entry.email_address);
-
-    let anyAllowed = false;
-    for (const email of emailAddreses) {
-      const allowedEmail = await ctx.db
-        .query('allowedEmails')
-        .withIndex('by_email', (q) => q.eq('email', email))
-        .unique();
-      anyAllowed = anyAllowed || allowedEmail !== null;
-    }
+    const anyAllowed = await anyEmailAllowed(ctx, user.clerkUser);
     if (!anyAllowed) {
       console.log('user not allowed', user.clerkUser);
       return null;
@@ -42,17 +55,7 @@ export class User {
     if (!user) {
       return "No Clerk user";
     }
-    const emailAddreses = user.clerkUser.email_addresses
-      .filter((entry: any) => entry.verification.status === 'verified')
-      .map((entry: any) => entry.email_address);
-    let anyAllowed = false;
-    for (const email of emailAddreses) {
-      const allowedEmail = await ctx.db
-        .query('allowedEmails')
-        .withIndex('by_email', (q) => q.eq('email', email))
-        .unique();
-      anyAllowed = anyAllowed || allowedEmail !== null;
-    }
+    const anyAllowed = await anyEmailAllowed(ctx, user.clerkUser);
     if (!anyAllowed) {
       return 'Disallowed email';
     }
