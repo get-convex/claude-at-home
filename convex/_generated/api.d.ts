@@ -17,6 +17,7 @@ import type * as ai from "../ai.js";
 import type * as auth from "../auth.js";
 import type * as conversations from "../conversations.js";
 import type * as http from "../http.js";
+import type * as lib_modal from "../lib/modal.js";
 import type * as lib_openai from "../lib/openai.js";
 import type * as lib_tavily from "../lib/tavily.js";
 import type * as messages from "../messages.js";
@@ -39,6 +40,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   conversations: typeof conversations;
   http: typeof http;
+  "lib/modal": typeof lib_modal;
   "lib/openai": typeof lib_openai;
   "lib/tavily": typeof lib_tavily;
   messages: typeof messages;

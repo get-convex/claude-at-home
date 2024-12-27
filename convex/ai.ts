@@ -16,6 +16,8 @@ import { openaiClient } from './lib/openai';
 import { Memories } from './model/Memories';
 import { tavilyClient } from './lib/tavily';
 import { ToolUse } from './model/ToolUse';
+import { createSandboxResponse, execCommandArgs, modalClient, readFileArgs, terminateSandboxArgs, terminateSandboxResponse, writeFileArgs } from './lib/modal';
+import { createSandboxArgs } from './lib/modal';
 
 const SYSTEM_PROMPT = `
 You are a delightfully helpful assistant in a one-on-one English chat. Be warm but succinct. 
@@ -32,6 +34,14 @@ tool to search the web for a particular search term. Second, use the "tavilyQna"
 to ask the web a particular question. Finally, use the "tavilyExtract" tool to
 extract content from a list of URLs. Again, only use these tools if you believe
 that they will help the conversation.
+
+You also have access to Modal sandboxes, where you can create a container, optionally with
+a custom container image with apt packages or Python pip packages. You can then execute 
+commands in the sandbox, read and write files, and terminate the sandbox. The sandboxes 
+do not have network access and terminate after 10 minutes of inactivity. If you ever need 
+to run code, I would recommend creating a container, writing the code to "/tmp/code.py", 
+and then executing the code with the "execCommand" tool. Please terminate all sandboxes
+after you are done using them.
 
 Your response must be in Markdown. The Markdown environment also supports LaTeX using
 KaTeX. Note that you MUST use $ for inline LaTeX and $$ for block LaTeX. KaTeX does 
@@ -91,6 +101,32 @@ const tools: Array<ChatCompletionTool> = [
     name: 'tavilyExtract',
     parameters: tavilyExtractParameters,
     description: 'Extract content from a list of URLs.',
+  }),
+
+  zodFunction({
+    name: 'createSandbox',
+    parameters: createSandboxArgs,
+    description: 'Create a new sandbox, returning a sandbox ID.',
+  }),
+  zodFunction({
+    name: 'terminateSandbox',
+    parameters: terminateSandboxArgs,
+    description: 'Terminate a sandbox by its ID.',
+  }),
+  zodFunction({
+    name: 'execCommand',
+    parameters: execCommandArgs,
+    description: 'Execute a command in a sandbox.',
+  }),
+  zodFunction({
+    name: 'readFile',
+    parameters: readFileArgs,
+    description: 'Read a file from a sandbox.',
+  }),
+  zodFunction({
+    name: 'writeFile',
+    parameters: writeFileArgs,
+    description: 'Write to a file in a sandbox.',
   }),
 ];
 
@@ -246,66 +282,144 @@ export const chat = internalAction({
               },
             ],
           });
-          if (result.functionName === 'queryMemory') {
-            const { query } = queryMemoryParameters.parse(JSON.parse(toolArgs));
-            const memories = await Memories.query(ctx, conversation.creatorId, query);
-            console.log('Result:', memories);
-            context.push({
-              role: 'tool',
-              content: JSON.stringify(memories),
-              tool_call_id: result.callId,
-            });
-            await ctx.runMutation(internal.ai.setToolUseSuccess, {
+          try {
+            if (result.functionName === 'queryMemory') {
+              const { query } = queryMemoryParameters.parse(JSON.parse(toolArgs));
+              const memories = await Memories.query(ctx, conversation.creatorId, query);
+              console.log('Result:', memories);
+              context.push({
+                role: 'tool',
+                content: JSON.stringify(memories),
+                tool_call_id: result.callId,
+              });
+              await ctx.runMutation(internal.ai.setToolUseSuccess, {
+                id: toolUseId,
+                result: JSON.stringify(memories),
+              });
+              continue;
+            } else if (result.functionName === 'tavilySearch') {
+              const tvly = tavilyClient();
+              const { query, options } = tavilySearchParameters.parse(JSON.parse(toolArgs));
+              const searchResult = await tvly.search(query, options);
+              context.push({
+                role: 'tool',
+                content: JSON.stringify(searchResult),
+                tool_call_id: result.callId,
+              });
+              await ctx.runMutation(internal.ai.setToolUseSuccess, {
+                id: toolUseId,
+                result: JSON.stringify(searchResult),
+              });
+              continue;
+            } else if (result.functionName === 'tavilyQna') {
+              const tvly = tavilyClient();
+              const { query, options } = tavilyQnaParameters.parse(JSON.parse(toolArgs));
+              const qnaResult = await tvly.searchQNA(query, options);
+              console.log('Result:', qnaResult);
+              context.push({
+                role: 'tool',
+                content: JSON.stringify(qnaResult),
+                tool_call_id: result.callId,
+              });
+              await ctx.runMutation(internal.ai.setToolUseSuccess, {
+                id: toolUseId,
+                result: JSON.stringify(qnaResult),
+              });
+              continue;
+            } else if (result.functionName === 'tavilyExtract') {
+              const tvly = tavilyClient();
+              const { urls } = tavilyExtractParameters.parse(JSON.parse(toolArgs));
+              const extractResult = await tvly.extract(urls);
+              console.log('Result:', extractResult);
+              context.push({
+                role: 'tool',
+                content: JSON.stringify(extractResult),
+                tool_call_id: result.callId,
+              });
+              await ctx.runMutation(internal.ai.setToolUseSuccess, {
+                id: toolUseId,
+                result: JSON.stringify(extractResult),
+              });
+              continue;
+            } else if (result.functionName === 'createSandbox') {
+              const modal = modalClient();
+              const args = createSandboxArgs.parse(JSON.parse(toolArgs));
+              const response = await modal.createSandbox(args);
+              context.push({
+                role: 'tool',
+                content: JSON.stringify(response),
+                tool_call_id: result.callId,
+              });
+              await ctx.runMutation(internal.ai.setToolUseSuccess, {
+                id: toolUseId,
+                result: JSON.stringify(response),
+              });
+              continue;
+            } else if (result.functionName === 'terminateSandbox') {
+              const modal = modalClient();
+              const args = terminateSandboxArgs.parse(JSON.parse(toolArgs));
+              const response = await modal.terminateSandbox(args);
+              context.push({
+                role: 'tool',
+                content: JSON.stringify(response),
+                tool_call_id: result.callId,
+              });
+              await ctx.runMutation(internal.ai.setToolUseSuccess, {
+                id: toolUseId,
+                result: JSON.stringify(response),
+              });
+              continue;
+            } else if (result.functionName === 'execCommand') {
+              const modal = modalClient();
+              const args = execCommandArgs.parse(JSON.parse(toolArgs));
+              const response = await modal.execCommand(args);
+              context.push({
+                role: 'tool',
+                content: JSON.stringify(response),
+                tool_call_id: result.callId,
+              });
+              await ctx.runMutation(internal.ai.setToolUseSuccess, {
+                id: toolUseId,
+                result: JSON.stringify(response),
+              });
+              continue;
+            } else if (result.functionName === 'readFile') {
+              const modal = modalClient();
+              const args = readFileArgs.parse(JSON.parse(toolArgs));
+              const response = await modal.readFile(args);
+              context.push({
+                role: 'tool',
+                content: JSON.stringify(response),
+                tool_call_id: result.callId,
+              });
+              await ctx.runMutation(internal.ai.setToolUseSuccess, {
+                id: toolUseId,
+                result: JSON.stringify(response),
+              });
+              continue;
+            } else if (result.functionName === 'writeFile') {
+              const modal = modalClient();
+              const args = writeFileArgs.parse(JSON.parse(toolArgs));
+              const response = await modal.writeFile(args);
+              context.push({
+                role: 'tool',
+                content: JSON.stringify(response),
+                tool_call_id: result.callId,
+              });
+              await ctx.runMutation(internal.ai.setToolUseSuccess, {
+                id: toolUseId,
+                result: JSON.stringify(response),
+              });
+              continue;
+            } else {
+              throw new Error(`Unexpected tool call: ${result.functionName}`);
+            }
+          } catch (e: any) {
+            await ctx.runMutation(internal.ai.setToolUseError, {
               id: toolUseId,
-              result: JSON.stringify(memories),
+              error: e.toString(),
             });
-            continue;
-          } else if (result.functionName === 'tavilySearch') {
-            const tvly = tavilyClient();
-            const { query, options } = tavilySearchParameters.parse(JSON.parse(toolArgs));
-            const searchResult = await tvly.search(query, options);
-            context.push({
-              role: 'tool',
-              content: JSON.stringify(searchResult),
-              tool_call_id: result.callId,
-            });
-            await ctx.runMutation(internal.ai.setToolUseSuccess, {
-              id: toolUseId,
-              result: JSON.stringify(searchResult),
-            });
-            continue;
-          } else if (result.functionName === 'tavilyQna') {
-            const tvly = tavilyClient();
-            const { query, options } = tavilyQnaParameters.parse(JSON.parse(toolArgs));
-            const qnaResult = await tvly.searchQNA(query, options);
-            console.log('Result:', qnaResult);
-            context.push({
-              role: 'tool',
-              content: JSON.stringify(qnaResult),
-              tool_call_id: result.callId,
-            });
-            await ctx.runMutation(internal.ai.setToolUseSuccess, {
-              id: toolUseId,
-              result: JSON.stringify(qnaResult),
-            });
-            continue;
-          } else if (result.functionName === 'tavilyExtract') {
-            const tvly = tavilyClient();
-            const { urls } = tavilyExtractParameters.parse(JSON.parse(toolArgs));
-            const extractResult = await tvly.extract(urls);
-            console.log('Result:', extractResult);
-            context.push({
-              role: 'tool',
-              content: JSON.stringify(extractResult),
-              tool_call_id: result.callId,
-            });
-            await ctx.runMutation(internal.ai.setToolUseSuccess, {
-              id: toolUseId,
-              result: JSON.stringify(extractResult),
-            });
-            continue;
-          } else {
-            throw new Error(`Unexpected tool call: ${result.functionName}`);
+            throw e;
           }
         } else if (result.type === 'message') {
           for await (const part of result.stream) {
@@ -461,5 +575,15 @@ export const setToolUseSuccess = internalMutation({
   },
   handler: async (ctx, args) => {
     await ToolUse.setSuccess(ctx, args.id, args.result);
+  },
+});
+
+export const setToolUseError = internalMutation({
+  args: {
+    id: v.id('toolUsage'),
+    error: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ToolUse.setError(ctx, args.id, args.error);
   },
 });
