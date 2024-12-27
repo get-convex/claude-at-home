@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 const modalSecret = process.env.MODAL_SECRET;
 const modalUrl = process.env.MODAL_URL;
@@ -21,47 +21,50 @@ export function modalClient() {
 export const createSandboxArgs = z.object({
   apt_packages: z.array(z.string()).optional(),
   pip_packages: z.array(z.string()).optional(),
-})
+});
 export const createSandboxResponse = z.object({
   sandbox_id: z.string(),
-})
+});
 
 export const terminateSandboxArgs = z.object({
   sandbox_id: z.string(),
-})
+});
 export const terminateSandboxResponse = z.object({
   status: z.string(),
-})
+});
 
 export const execCommandArgs = z.object({
   sandbox_id: z.string(),
   command: z.array(z.string()),
-})
+});
 export const execCommandResponse = z.object({
   returncode: z.number(),
   stdout: z.string(),
   stderr: z.string(),
-})
+});
 
 export const readFileArgs = z.object({
   sandbox_id: z.string(),
   path: z.string(),
-})
+});
 export const readFileResponse = z.object({
   contents: z.string(),
-})
+});
 
 export const writeFileArgs = z.object({
   sandbox_id: z.string(),
   path: z.string(),
   contents: z.string(),
-})
+});
 export const writeFileResponse = z.object({
   status: z.string(),
-})
+});
 
 class ModalClient {
-  constructor(private secret: string, private url: string) { }
+  constructor(
+    private secret: string,
+    private url: string
+  ) {}
 
   async createSandbox(args: z.infer<typeof createSandboxArgs>) {
     const response = await fetch(this.url, {
@@ -79,7 +82,7 @@ class ModalClient {
       throw new Error(`Failed to create sandbox: ${response.statusText}`);
     }
     const data = await response.json();
-    return createSandboxResponse.parse(data)
+    return createSandboxResponse.parse(data);
   }
 
   async terminateSandbox(args: z.infer<typeof terminateSandboxArgs>) {

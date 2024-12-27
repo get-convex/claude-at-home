@@ -2,133 +2,33 @@ import { v } from 'convex/values';
 import { ActionCtx, internalAction, internalMutation, internalQuery } from './_generated/server';
 import OpenAI from 'openai';
 import { internal } from './_generated/api';
-import { zodFunction, zodResponseFormat } from 'openai/helpers/zod';
+import { zodResponseFormat } from 'openai/helpers/zod';
 import { z } from 'zod';
 import { Conversations } from './model/Conversations';
 import { Doc } from './_generated/dataModel';
 import { Messages } from './model/Messages';
-import {
-  ChatCompletionChunk,
-  ChatCompletionMessageParam,
-  ChatCompletionTool,
-} from 'openai/resources/index.mjs';
+import { ChatCompletionMessageParam, ChatCompletionChunk } from 'openai/resources/index.mjs';
 import { openaiClient } from './lib/openai';
-import { Memories } from './model/Memories';
-import { tavilyClient } from './lib/tavily';
 import { ToolUse } from './model/ToolUse';
-import { createSandboxResponse, execCommandArgs, modalClient, readFileArgs, terminateSandboxArgs, terminateSandboxResponse, writeFileArgs } from './lib/modal';
-import { createSandboxArgs } from './lib/modal';
+import { toolRegistry } from './lib/toolDefinitions';
 
-const SYSTEM_PROMPT = `
-You are a delightfully helpful assistant in a one-on-one English chat. Be warm but succinct. 
+function getSystemPrompt() {
+  const basePrompt = `You are a delightfully helpful assistant in a one-on-one English chat. Be warm but succinct. 
 You are definitely not lame, though, so please don't use happy or excited emojis
-at the end of your messages.
+at the end of your messages.`;
 
-This chat app supports memories, where you can query memories using OpenAI's embedding
-model and a nearest neighbor search. Use the "query_memory" tool to search for memories
-if you believe it will help the conversation. Be aware that the memories may not
-be that relevant to the conversation.
+  const toolPrompts = toolRegistry.getToolPrompts();
 
-You also have access to the Tavily API with a few tools. First, use the "tavilySearch"
-tool to search the web for a particular search term. Second, use the "tavilyQna" tool
-to ask the web a particular question. Finally, use the "tavilyExtract" tool to
-extract content from a list of URLs. Again, only use these tools if you believe
-that they will help the conversation.
-
-You also have access to Modal sandboxes, where you can create a container, optionally with
-a custom container image with apt packages or Python pip packages. You can then execute 
-commands in the sandbox, read and write files, and terminate the sandbox. The sandboxes 
-do not have network access and terminate after 10 minutes of inactivity. If you ever need 
-to run code, I would recommend creating a container, writing the code to "/tmp/code.py", 
-and then executing the code with the "execCommand" tool. Please terminate all sandboxes
-after you are done using them.
-
-Your response must be in Markdown. The Markdown environment also supports LaTeX using
+  const formatPrompt = `Your response must be in Markdown. The Markdown environment also supports LaTeX using
 KaTeX. Note that you MUST use $ for inline LaTeX and $$ for block LaTeX. KaTeX does 
 not support using \( \) or \[ \] for inline or block LaTeX. This is very important 
-since it will break rendering.
-`;
+since it will break rendering. Also note that since the environment supports LaTeX, 
+you will have to escape dollar signs in your response.`;
 
-const queryMemoryParameters = z.object({
-  query: z.string(),
-});
-
-const tavilySearchOptions = z.object({
-  searchDepth: z.enum(['basic', 'advanced']).optional(),
-  topic: z.enum(['general', 'news', 'finance']).optional(),
-  days: z.number().optional(),
-  maxResults: z.number().optional(),
-  includeImages: z.boolean().optional(),
-  includeImageDescriptions: z.boolean().optional(),
-  includeAnswer: z.boolean().optional(),
-  includeRawContent: z.boolean().optional(),
-});
-
-const tavilySearchParameters = z.object({
-  query: z.string(),
-  options: tavilySearchOptions,
-});
-
-const tavilyQnaParameters = z.object({
-  query: z.string(),
-  options: tavilySearchOptions,
-});
-
-const tavilyExtractParameters = z.object({
-  urls: z.array(z.string()),
-});
+  return [basePrompt, toolPrompts, formatPrompt].join('\n\n');
+}
 
 const openai = openaiClient();
-
-const tools: Array<ChatCompletionTool> = [
-  zodFunction({
-    name: 'queryMemory',
-    parameters: queryMemoryParameters,
-    description:
-      'Issue a semantic search query over all previous memories. The query string will be embedded, and the query will return the content of the 15 memories closest in embedding space.',
-  }),
-  zodFunction({
-    name: 'tavilySearch',
-    parameters: tavilySearchParameters,
-    description: 'Search the web for a particular search term.',
-  }),
-  zodFunction({
-    name: 'tavilyQna',
-    parameters: tavilyQnaParameters,
-    description: 'Ask the web a particular question.',
-  }),
-  zodFunction({
-    name: 'tavilyExtract',
-    parameters: tavilyExtractParameters,
-    description: 'Extract content from a list of URLs.',
-  }),
-
-  zodFunction({
-    name: 'createSandbox',
-    parameters: createSandboxArgs,
-    description: 'Create a new sandbox, returning a sandbox ID.',
-  }),
-  zodFunction({
-    name: 'terminateSandbox',
-    parameters: terminateSandboxArgs,
-    description: 'Terminate a sandbox by its ID.',
-  }),
-  zodFunction({
-    name: 'execCommand',
-    parameters: execCommandArgs,
-    description: 'Execute a command in a sandbox.',
-  }),
-  zodFunction({
-    name: 'readFile',
-    parameters: readFileArgs,
-    description: 'Read a file from a sandbox.',
-  }),
-  zodFunction({
-    name: 'writeFile',
-    parameters: writeFileArgs,
-    description: 'Write to a file in a sandbox.',
-  }),
-];
 
 async function streamChat(context: Array<ChatCompletionMessageParam>) {
   const stream = await openai.chat.completions.create({
@@ -137,11 +37,11 @@ async function streamChat(context: Array<ChatCompletionMessageParam>) {
     messages: [
       {
         role: 'system',
-        content: SYSTEM_PROMPT,
+        content: getSystemPrompt(),
       },
       ...context,
     ],
-    tools,
+    tools: toolRegistry.getOpenAITools(),
   });
   const iter = stream[Symbol.asyncIterator]();
 
@@ -242,7 +142,7 @@ export const chat = internalAction({
     const context: Array<ChatCompletionMessageParam> = [
       {
         role: 'system',
-        content: SYSTEM_PROMPT,
+        content: getSystemPrompt(),
       },
       ...previousMessages,
     ];
@@ -282,139 +182,38 @@ export const chat = internalAction({
               },
             ],
           });
+
           try {
-            if (result.functionName === 'queryMemory') {
-              const { query } = queryMemoryParameters.parse(JSON.parse(toolArgs));
-              const memories = await Memories.query(ctx, conversation.creatorId, query);
-              console.log('Result:', memories);
-              context.push({
-                role: 'tool',
-                content: JSON.stringify(memories),
-                tool_call_id: result.callId,
-              });
-              await ctx.runMutation(internal.ai.setToolUseSuccess, {
-                id: toolUseId,
-                result: JSON.stringify(memories),
-              });
-              continue;
-            } else if (result.functionName === 'tavilySearch') {
-              const tvly = tavilyClient();
-              const { query, options } = tavilySearchParameters.parse(JSON.parse(toolArgs));
-              const searchResult = await tvly.search(query, options);
-              context.push({
-                role: 'tool',
-                content: JSON.stringify(searchResult),
-                tool_call_id: result.callId,
-              });
-              await ctx.runMutation(internal.ai.setToolUseSuccess, {
-                id: toolUseId,
-                result: JSON.stringify(searchResult),
-              });
-              continue;
-            } else if (result.functionName === 'tavilyQna') {
-              const tvly = tavilyClient();
-              const { query, options } = tavilyQnaParameters.parse(JSON.parse(toolArgs));
-              const qnaResult = await tvly.searchQNA(query, options);
-              console.log('Result:', qnaResult);
-              context.push({
-                role: 'tool',
-                content: JSON.stringify(qnaResult),
-                tool_call_id: result.callId,
-              });
-              await ctx.runMutation(internal.ai.setToolUseSuccess, {
-                id: toolUseId,
-                result: JSON.stringify(qnaResult),
-              });
-              continue;
-            } else if (result.functionName === 'tavilyExtract') {
-              const tvly = tavilyClient();
-              const { urls } = tavilyExtractParameters.parse(JSON.parse(toolArgs));
-              const extractResult = await tvly.extract(urls);
-              console.log('Result:', extractResult);
-              context.push({
-                role: 'tool',
-                content: JSON.stringify(extractResult),
-                tool_call_id: result.callId,
-              });
-              await ctx.runMutation(internal.ai.setToolUseSuccess, {
-                id: toolUseId,
-                result: JSON.stringify(extractResult),
-              });
-              continue;
-            } else if (result.functionName === 'createSandbox') {
-              const modal = modalClient();
-              const args = createSandboxArgs.parse(JSON.parse(toolArgs));
-              const response = await modal.createSandbox(args);
-              context.push({
-                role: 'tool',
-                content: JSON.stringify(response),
-                tool_call_id: result.callId,
-              });
-              await ctx.runMutation(internal.ai.setToolUseSuccess, {
-                id: toolUseId,
-                result: JSON.stringify(response),
-              });
-              continue;
-            } else if (result.functionName === 'terminateSandbox') {
-              const modal = modalClient();
-              const args = terminateSandboxArgs.parse(JSON.parse(toolArgs));
-              const response = await modal.terminateSandbox(args);
-              context.push({
-                role: 'tool',
-                content: JSON.stringify(response),
-                tool_call_id: result.callId,
-              });
-              await ctx.runMutation(internal.ai.setToolUseSuccess, {
-                id: toolUseId,
-                result: JSON.stringify(response),
-              });
-              continue;
-            } else if (result.functionName === 'execCommand') {
-              const modal = modalClient();
-              const args = execCommandArgs.parse(JSON.parse(toolArgs));
-              const response = await modal.execCommand(args);
-              context.push({
-                role: 'tool',
-                content: JSON.stringify(response),
-                tool_call_id: result.callId,
-              });
-              await ctx.runMutation(internal.ai.setToolUseSuccess, {
-                id: toolUseId,
-                result: JSON.stringify(response),
-              });
-              continue;
-            } else if (result.functionName === 'readFile') {
-              const modal = modalClient();
-              const args = readFileArgs.parse(JSON.parse(toolArgs));
-              const response = await modal.readFile(args);
-              context.push({
-                role: 'tool',
-                content: JSON.stringify(response),
-                tool_call_id: result.callId,
-              });
-              await ctx.runMutation(internal.ai.setToolUseSuccess, {
-                id: toolUseId,
-                result: JSON.stringify(response),
-              });
-              continue;
-            } else if (result.functionName === 'writeFile') {
-              const modal = modalClient();
-              const args = writeFileArgs.parse(JSON.parse(toolArgs));
-              const response = await modal.writeFile(args);
-              context.push({
-                role: 'tool',
-                content: JSON.stringify(response),
-                tool_call_id: result.callId,
-              });
-              await ctx.runMutation(internal.ai.setToolUseSuccess, {
-                id: toolUseId,
-                result: JSON.stringify(response),
-              });
-              continue;
-            } else {
-              throw new Error(`Unexpected tool call: ${result.functionName}`);
-            }
+            const toolResult = await toolRegistry.executeTool(
+              {
+                ctx,
+                messageId: args.messageId,
+                conversationId: args.conversationId,
+                creatorId: conversation.creatorId,
+                callId: result.callId,
+              },
+              result.functionName,
+              toolArgs
+            );
+
+            context.push({
+              role: 'tool',
+              content: toolResult,
+              tool_call_id: result.callId,
+            });
+
+            await ctx.runMutation(internal.ai.setToolUseSuccess, {
+              id: toolUseId,
+              result: toolResult,
+            });
+
+            continue;
           } catch (e: any) {
+            context.push({
+              role: 'tool',
+              content: `Tool failed: ${e.toString()}`,
+              tool_call_id: result.callId,
+            });
             await ctx.runMutation(internal.ai.setToolUseError, {
               id: toolUseId,
               error: e.toString(),

@@ -41,17 +41,19 @@ export class User {
     return user as AuthenticatedUser;
   }
 
-  static async loggedInStatus(ctx: QueryCtx): Promise<"No JWT token" | "No Clerk user" | "Disallowed email" | "Logged in"> {
+  static async loggedInStatus(
+    ctx: QueryCtx
+  ): Promise<'No JWT token' | 'No Clerk user' | 'Disallowed email' | 'Logged in'> {
     const identity = await ctx.auth.getUserIdentity();
     if (identity === null) {
-      return "No JWT token";
+      return 'No JWT token';
     }
     const user = await ctx.db
       .query('users')
       .withIndex('by_clerk_id', (q) => q.eq('clerkUser.id', identity.subject))
       .unique();
     if (!user) {
-      return "No Clerk user";
+      return 'No Clerk user';
     }
     const anyAllowed = await anyEmailAllowed(ctx, user.clerkUser);
     if (!anyAllowed) {

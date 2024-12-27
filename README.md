@@ -19,7 +19,7 @@ bunx convex env set OPENAI_API_KEY <your-key>
 ```
 
 Next, we need to set up auth with Clerk. First, create a new Clerk
-project, and only enable Google sign-in. This is a bit finicky: I 
+project, and only enable Google sign-in. This is a bit finicky: I
 ended up needing to create _two_ Clerk projects, one for dev and one
 for prod. This is because adding a production deployment for a Clerk
 project requires a domain. But, for now, just create a single project.
