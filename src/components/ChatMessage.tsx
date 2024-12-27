@@ -367,10 +367,11 @@ export function ChatMessage({ message }: ChatMessageProps) {
             {message.state.type === 'generating' && (
               <button
                 onClick={() => cancel({ messageId: message._id })}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                className="px-2 py-0.5 rounded text-red-600 hover:text-red-50 hover:bg-red-600 dark:text-red-400 dark:hover:text-red-50 dark:hover:bg-red-600 transition-colors flex items-center gap-1.5 text-xs font-medium border border-red-200 dark:border-red-900/50 hover:border-transparent"
                 title="Cancel generation"
               >
-                <XCircle className="w-5 h-5" />
+                <XCircle className="w-3.5 h-3.5" />
+                Stop generation
               </button>
             )}
           </div>

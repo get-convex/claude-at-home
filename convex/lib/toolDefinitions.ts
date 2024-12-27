@@ -2,7 +2,14 @@ import { z } from 'zod';
 import { Tool, toolRegistry } from './tools';
 import { Memories } from '../model/Memories';
 import { tavilyClient } from './tavily';
-import { modalClient } from './modal';
+import {
+  createSandboxArgs,
+  execCommandArgs,
+  modalClient,
+  readFileArgs,
+  terminateSandboxArgs,
+  writeFileArgs,
+} from './modal';
 
 // Memory tools
 const queryMemoryTool: Tool<{ query: string }, any> = {
@@ -91,11 +98,7 @@ messages. This can be a lot more efficient than creating a new container for eac
 const createSandboxTool: Tool = {
   name: 'createSandbox',
   description: 'Create a new sandbox, returning a sandbox ID.',
-  parameters: z.object({
-    image: z.string().optional(),
-    pythonPackages: z.array(z.string()).optional(),
-    aptPackages: z.array(z.string()).optional(),
-  }),
+  parameters: createSandboxArgs,
   execute: async (_context, args) => {
     const modal = modalClient();
     return await modal.createSandbox(args);
@@ -106,9 +109,7 @@ const createSandboxTool: Tool = {
 const terminateSandboxTool: Tool = {
   name: 'terminateSandbox',
   description: 'Terminate a sandbox by its ID.',
-  parameters: z.object({
-    sandbox_id: z.string(),
-  }),
+  parameters: terminateSandboxArgs,
   execute: async (_context, args) => {
     const modal = modalClient();
     return await modal.terminateSandbox(args);
@@ -118,10 +119,7 @@ const terminateSandboxTool: Tool = {
 const execCommandTool: Tool = {
   name: 'execCommand',
   description: 'Execute a command in a sandbox.',
-  parameters: z.object({
-    sandbox_id: z.string(),
-    command: z.array(z.string()),
-  }),
+  parameters: execCommandArgs,
   execute: async (_context, args) => {
     const modal = modalClient();
     return await modal.execCommand(args);
@@ -131,10 +129,7 @@ const execCommandTool: Tool = {
 const readFileTool: Tool = {
   name: 'readFile',
   description: 'Read a file from a sandbox.',
-  parameters: z.object({
-    sandbox_id: z.string(),
-    path: z.string(),
-  }),
+  parameters: readFileArgs,
   execute: async (_context, args) => {
     const modal = modalClient();
     return await modal.readFile(args);
@@ -144,11 +139,7 @@ const readFileTool: Tool = {
 const writeFileTool: Tool = {
   name: 'writeFile',
   description: 'Write to a file in a sandbox.',
-  parameters: z.object({
-    sandbox_id: z.string(),
-    path: z.string(),
-    contents: z.string(),
-  }),
+  parameters: writeFileArgs,
   execute: async (_context, args) => {
     const modal = modalClient();
     return await modal.writeFile(args);

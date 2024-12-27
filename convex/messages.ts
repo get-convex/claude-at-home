@@ -76,7 +76,6 @@ export const listToolUses = query({
   },
 });
 
-
 export const cancel = mutation({
   args: {
     messageId: v.id('messages'),
