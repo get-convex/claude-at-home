@@ -27,7 +27,7 @@ export function ChatLayout() {
 
   useEffect(() => {
     const lastMessage = messages && messages[messages.length - 1];
-    if (lastMessage && !lastMessage.isComplete) {
+    if (lastMessage && lastMessage.state.type === 'generating') {
       const chatContainer = document.querySelector('.chat-messages-container');
       if (chatContainer) {
         chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' });
