@@ -24,14 +24,14 @@ export class Messages {
             name: user.clerkUser.first_name,
             imageUrl: user.clerkUser.image_url,
           },
-          isComplete: message.isComplete,
+          state: message.state,
         });
       } else {
         results.push({
           _id: message._id,
           body: message.body,
           agent: { type: 'openai' as const },
-          isComplete: message.isComplete,
+          state: message.state,
         });
       }
     }
@@ -47,38 +47,63 @@ export class Messages {
     const userMessageId = await ctx.db.insert('messages', {
       body,
       agent: { id: userId, type: 'user' },
-      isComplete: true,
+      state: { type: 'complete' },
       conversationId,
     });
     await Memories.queueForIndexing(ctx, { type: 'message', messageId: userMessageId });
     const aiMessageId = await ctx.db.insert('messages', {
       agent: { type: 'openai' },
       body: '...',
-      isComplete: false,
+      state: { type: 'generating' },
       conversationId,
     });
     ctx.scheduler.runAfter(0, internal.ai.chat, { conversationId, messageId: aiMessageId });
   }
 
-  static async update(
-    ctx: MutationCtx,
-    messageId: Id<'messages'>,
-    patch: { body?: string; isComplete?: boolean }
-  ) {
+  static async requireGenerating(ctx: QueryCtx, messageId: Id<'messages'>) {
     const existing = await ctx.db.get(messageId);
     if (!existing) {
       throw new Error(`Message ${messageId} not found`);
     }
-    if (existing.isComplete) {
+    if (existing.state.type !== 'generating') {
+      throw new Error(`Message ${messageId} is not generating`);
+    }
+  }
+
+  static async generateBody(ctx: MutationCtx, messageId: Id<'messages'>, body: string) {
+    const existing = await ctx.db.get(messageId);
+    if (!existing) {
+      throw new Error(`Message ${messageId} not found`);
+    }
+    if (existing.state.type !== 'generating') {
+      throw new Error(`Message ${messageId} is not generating`);
+    }
+    await ctx.db.patch(messageId, { body });
+  }
+
+  static async complete(ctx: MutationCtx, messageId: Id<'messages'>) {
+    const existing = await ctx.db.get(messageId);
+    if (!existing) {
+      throw new Error(`Message ${messageId} not found`);
+    }
+    if (existing.state.type !== 'generating') {
+      throw new Error(`Message ${messageId} is not generating`);
+    }
+    await ctx.db.patch(messageId, { state: { type: 'complete' } });
+  }
+
+  static async fail(ctx: MutationCtx, messageId: Id<'messages'>, error: string) {
+    const existing = await ctx.db.get(messageId);
+    if (!existing) {
+      throw new Error(`Message ${messageId} not found`);
+    }
+    if (existing.state.type === 'complete') {
       throw new Error(`Message ${messageId} is already complete`);
     }
-    if (patch.body !== undefined) {
-      await ctx.db.patch(messageId, { body: patch.body });
+    if (existing.state.type === 'error') {
+      throw new Error(`Message ${messageId} is already in error state`);
     }
-    if (patch.isComplete) {
-      await Memories.queueForIndexing(ctx, { type: 'message', messageId });
-    }
-    await ctx.db.patch(messageId, patch);
+    await ctx.db.patch(messageId, { state: { type: 'error', error } });
   }
 
   static async remove(ctx: MutationCtx, messageId: Id<'messages'>) {

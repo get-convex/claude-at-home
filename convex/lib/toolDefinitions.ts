@@ -84,8 +84,9 @@ a custom container image with apt packages or Python pip packages. You can then 
 commands in the sandbox, read and write files, and terminate the sandbox. The sandboxes 
 do not have network access and terminate after 10 minutes of inactivity. If you ever need 
 to run code, I would recommend creating a container, writing the code to "/tmp/code.py", 
-and then executing the code with the "execCommand" tool. Please terminate all sandboxes
-after you are done using them.`;
+and then executing the code with the "execCommand" tool. Note that you can reuse containers
+across multiple messages if it hasn't been terminated, and files will persist across
+messages. This can be a lot more efficient than creating a new container for each message.`;
 
 const createSandboxTool: Tool = {
   name: 'createSandbox',

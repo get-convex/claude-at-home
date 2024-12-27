@@ -89,7 +89,7 @@ export const nextToIndex = internalQuery({
     if (!message) {
       throw new Error(`Message ${memory.source.messageId} not found`);
     }
-    if (!message.isComplete) {
+    if (message.state.type !== 'complete') {
       throw new Error(`Message ${memory.source.messageId} is not complete`);
     }
     const conversation = await ctx.db.get(message.conversationId);

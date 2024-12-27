@@ -33,9 +33,12 @@ export default defineSchema({
   messages: defineTable({
     agent,
     body: v.string(),
-    isComplete: v.boolean(),
     conversationId: v.id('conversations'),
-    thinking: v.optional(v.string()),
+    state: v.union(
+      v.object({ type: v.literal('generating') }),
+      v.object({ type: v.literal('error'), error: v.string() }),
+      v.object({ type: v.literal('complete') })
+    ),
   }).index('by_conversation', ['conversationId']),
 
   toolUsage: defineTable({

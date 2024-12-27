@@ -1,4 +1,4 @@
-import { Loader2, ChevronRight, ChevronDown, Check, X, Settings2 } from 'lucide-react';
+import { Loader2, ChevronRight, ChevronDown, Check, X, Settings2, XCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -7,10 +7,11 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import openAiLogo from '../assets/openai-white-logomark.svg';
 import { Message } from '../types';
-import { useQuery } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
 import { useRef, useState } from 'react';
+import { Tooltip } from './Tooltip';
 
 interface ToolUse {
   _id: Id<'toolUsage'>;
@@ -336,6 +337,7 @@ interface ChatMessageProps {
 }
 
 export function ChatMessage({ message }: ChatMessageProps) {
+  const cancel = useMutation(api.messages.cancel);
   return (
     <article className="py-6 border-b border-gray-100 dark:border-gray-800">
       <div className="flex items-start gap-4">
@@ -350,10 +352,26 @@ export function ChatMessage({ message }: ChatMessageProps) {
           </div>
         )}
         <div className="flex-1">
-          <div className="font-medium text-gray-900 dark:text-gray-100 mb-1 flex items-center gap-2">
-            {message.agent.type === 'user' ? message.agent.name : 'ChatGPT'}
-            {!message.isComplete && (
-              <Loader2 className="w-4 h-4 animate-spin text-blue-600 dark:text-blue-400" />
+          <div className="font-medium text-gray-900 dark:text-gray-100 mb-1 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {message.agent.type === 'user' ? message.agent.name : 'ChatGPT'}
+              {message.state.type === 'generating' && (
+                <Loader2 className="w-4 h-4 animate-spin text-blue-600 dark:text-blue-400" />
+              )}
+              {message.state.type === 'error' && (
+                <Tooltip content={message.state.error}>
+                  <X className="w-4 h-4 text-red-600 dark:text-red-400" />
+                </Tooltip>
+              )}
+            </div>
+            {message.state.type === 'generating' && (
+              <button
+                onClick={() => cancel({ messageId: message._id })}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                title="Cancel generation"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
             )}
           </div>
           <div className="prose prose-sm dark:prose-invert max-w-none text-gray-700 dark:text-gray-300">

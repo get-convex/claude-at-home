@@ -302,7 +302,7 @@ export const streamMessage = internalMutation({
     body: v.string(),
   },
   handler: async (ctx, args) => {
-    await Messages.update(ctx, args.messageId, { body: args.body });
+    await Messages.generateBody(ctx, args.messageId, args.body);
   },
 });
 
@@ -311,7 +311,7 @@ export const completeMessage = internalMutation({
     messageId: v.id('messages'),
   },
   handler: async (ctx, args) => {
-    await Messages.update(ctx, args.messageId, { isComplete: true });
+    await Messages.complete(ctx, args.messageId);
   },
 });
 

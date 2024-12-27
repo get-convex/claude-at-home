@@ -2,9 +2,11 @@ import { QueryCtx } from '../_generated/server';
 
 import { Id } from '../_generated/dataModel';
 import { MutationCtx } from '../_generated/server';
+import { Messages } from './Messages';
 
 export class ToolUse {
   static async start(ctx: MutationCtx, messageId: Id<'messages'>, toolName: string) {
+    await Messages.requireGenerating(ctx, messageId);
     const id = await ctx.db.insert('toolUsage', {
       messageId,
       toolName,
@@ -19,6 +21,7 @@ export class ToolUse {
     if (!existing) {
       throw new Error('Tool use not found');
     }
+    await Messages.requireGenerating(ctx, existing.messageId);
     if (existing.status.type !== 'generating') {
       throw new Error('Tool use is not in generating state');
     }
@@ -32,6 +35,7 @@ export class ToolUse {
     if (!existing) {
       throw new Error('Tool use not found');
     }
+    await Messages.requireGenerating(ctx, existing.messageId);
     if (existing.status.type !== 'generating') {
       throw new Error('Tool use is not in generating state');
     }
@@ -45,6 +49,7 @@ export class ToolUse {
     if (!existing) {
       throw new Error('Tool use not found');
     }
+    await Messages.requireGenerating(ctx, existing.messageId);
     await ctx.db.patch(id, {
       status: { type: 'success', result },
     });
