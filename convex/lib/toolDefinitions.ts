@@ -46,7 +46,7 @@ const tavilySearchTool: Tool = {
     query: z.string(),
     options: tavilySearchOptions,
   }),
-  execute: async (context, args) => {
+  execute: async (_context, args) => {
     const tvly = tavilyClient();
     return await tvly.search(args.query, args.options);
   },
@@ -60,7 +60,7 @@ const tavilyQnaTool: Tool = {
     query: z.string(),
     options: tavilySearchOptions,
   }),
-  execute: async (context, args) => {
+  execute: async (_context, args) => {
     const tvly = tavilyClient();
     return await tvly.searchQNA(args.query, args.options);
   },
@@ -72,7 +72,7 @@ const tavilyExtractTool: Tool = {
   parameters: z.object({
     urls: z.array(z.string()),
   }),
-  execute: async (context, args) => {
+  execute: async (_context, args) => {
     const tvly = tavilyClient();
     return await tvly.extract(args.urls);
   },
@@ -95,7 +95,7 @@ const createSandboxTool: Tool = {
     pythonPackages: z.array(z.string()).optional(),
     aptPackages: z.array(z.string()).optional(),
   }),
-  execute: async (context, args) => {
+  execute: async (_context, args) => {
     const modal = modalClient();
     return await modal.createSandbox(args);
   },
@@ -108,7 +108,7 @@ const terminateSandboxTool: Tool = {
   parameters: z.object({
     sandboxId: z.string(),
   }),
-  execute: async (context, args) => {
+  execute: async (_context, args) => {
     const modal = modalClient();
     return await modal.terminateSandbox(args);
   },
@@ -121,7 +121,7 @@ const execCommandTool: Tool = {
     sandboxId: z.string(),
     command: z.array(z.string()),
   }),
-  execute: async (context, args) => {
+  execute: async (_context, args) => {
     const modal = modalClient();
     return await modal.execCommand(args);
   },
@@ -134,7 +134,7 @@ const readFileTool: Tool = {
     sandboxId: z.string(),
     path: z.string(),
   }),
-  execute: async (context, args) => {
+  execute: async (_context, args) => {
     const modal = modalClient();
     return await modal.readFile(args);
   },
@@ -148,7 +148,7 @@ const writeFileTool: Tool = {
     path: z.string(),
     contents: z.string(),
   }),
-  execute: async (context, args) => {
+  execute: async (_context, args) => {
     const modal = modalClient();
     return await modal.writeFile(args);
   },

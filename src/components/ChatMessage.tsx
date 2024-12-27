@@ -160,14 +160,14 @@ function SingleToolUse({ tool }: { tool: ToolUse }) {
         <>
           {tool.toolArgs && (
             <div className="text-gray-600 dark:text-gray-400 font-mono text-xs max-w-3xl overflow-x-auto">
-              <pre className="whitespace-pre-wrap break-all bg-gray-50 dark:bg-gray-900 p-2 rounded border border-gray-200 dark:border-gray-700">
+              <pre className="whitespace-pre-wrap break-all bg-gray-100 dark:bg-gray-900 p-2 rounded border border-gray-200 dark:border-gray-700">
                 {tool.toolArgs}
               </pre>
             </div>
           )}
           {tool.status.type === 'success' && (
             <div className="text-gray-700 dark:text-gray-300 font-mono text-xs max-w-3xl overflow-x-auto">
-              <pre className="whitespace-pre-wrap break-all bg-gray-50 dark:bg-gray-900 p-2 rounded border border-gray-200 dark:border-gray-700">
+              <pre className="whitespace-pre-wrap break-all bg-gray-100 dark:bg-gray-900 p-2 rounded border border-gray-200 dark:border-gray-700">
                 {tool.status.result}
               </pre>
             </div>
@@ -187,14 +187,14 @@ function SingleToolUse({ tool }: { tool: ToolUse }) {
         <>
           {tool.toolArgs && (
             <div className="text-gray-600 dark:text-gray-400 font-mono text-xs max-w-3xl overflow-x-auto">
-              <pre className="whitespace-pre-wrap break-all bg-gray-50 dark:bg-gray-900 p-2 rounded border border-gray-200 dark:border-gray-700">
+              <pre className="whitespace-pre-wrap break-all bg-gray-100 dark:bg-gray-900 p-2 rounded border border-gray-200 dark:border-gray-700">
                 {tool.toolArgs}
               </pre>
             </div>
           )}
           {tool.status.type === 'success' && (
             <div className="text-gray-700 dark:text-gray-300 font-mono text-xs max-w-3xl overflow-x-auto">
-              <pre className="whitespace-pre-wrap break-all bg-gray-50 dark:bg-gray-900 p-2 rounded border border-gray-200 dark:border-gray-700">
+              <pre className="whitespace-pre-wrap break-all bg-gray-100 dark:bg-gray-900 p-2 rounded border border-gray-200 dark:border-gray-700">
                 {tool.status.result}
               </pre>
             </div>
