@@ -106,7 +106,7 @@ const terminateSandboxTool: Tool = {
   name: 'terminateSandbox',
   description: 'Terminate a sandbox by its ID.',
   parameters: z.object({
-    sandboxId: z.string(),
+    sandbox_id: z.string(),
   }),
   execute: async (_context, args) => {
     const modal = modalClient();
@@ -118,7 +118,7 @@ const execCommandTool: Tool = {
   name: 'execCommand',
   description: 'Execute a command in a sandbox.',
   parameters: z.object({
-    sandboxId: z.string(),
+    sandbox_id: z.string(),
     command: z.array(z.string()),
   }),
   execute: async (_context, args) => {
@@ -131,7 +131,7 @@ const readFileTool: Tool = {
   name: 'readFile',
   description: 'Read a file from a sandbox.',
   parameters: z.object({
-    sandboxId: z.string(),
+    sandbox_id: z.string(),
     path: z.string(),
   }),
   execute: async (_context, args) => {
@@ -144,7 +144,7 @@ const writeFileTool: Tool = {
   name: 'writeFile',
   description: 'Write to a file in a sandbox.',
   parameters: z.object({
-    sandboxId: z.string(),
+    sandbox_id: z.string(),
     path: z.string(),
     contents: z.string(),
   }),

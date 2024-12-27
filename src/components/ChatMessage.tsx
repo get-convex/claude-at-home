@@ -10,7 +10,7 @@ import { Message } from '../types';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 interface ToolUse {
   _id: Id<'toolUsage'>;
@@ -62,10 +62,23 @@ function SingleToolUse({ tool }: { tool: ToolUse }) {
   const [showRawData, setShowRawData] = useState(false);
   const humanName = getHumanToolName(tool.toolName);
 
+  const lastParsed = useRef<any>(null);
+
   const renderToolContent = () => {
     console.log(tool.toolArgs);
+    let args = null;
+    let error = null;
     try {
-      const args = tolerantParse(tool.toolArgs);
+      args = tolerantParse(tool.toolArgs);
+      lastParsed.current = args;
+    } catch (e) {
+      error = e;
+      args = lastParsed.current;
+    }
+    try {
+      if (args === null) {
+        throw error ?? new Error('Failed to parse tool arguments');
+      }
 
       // Hide content for sandbox operations in the default view
       if (tool.toolName === 'createSandbox' || tool.toolName === 'terminateSandbox') {
@@ -159,22 +172,22 @@ function SingleToolUse({ tool }: { tool: ToolUse }) {
       return (
         <>
           {tool.toolArgs && (
-            <div className="text-gray-600 dark:text-gray-400 font-mono text-xs max-w-3xl overflow-x-auto">
-              <pre className="whitespace-pre-wrap break-all bg-gray-100 dark:bg-gray-900 p-2 rounded border border-gray-200 dark:border-gray-700">
+            <div className="font-mono text-xs max-w-3xl overflow-x-auto">
+              <pre className="text-gray-600 dark:text-gray-400 whitespace-pre-wrap break-all bg-gray-50 dark:bg-gray-900 p-2 rounded border border-gray-200 dark:border-gray-700">
                 {tool.toolArgs}
               </pre>
             </div>
           )}
           {tool.status.type === 'success' && (
-            <div className="text-gray-700 dark:text-gray-300 font-mono text-xs max-w-3xl overflow-x-auto">
-              <pre className="whitespace-pre-wrap break-all bg-gray-100 dark:bg-gray-900 p-2 rounded border border-gray-200 dark:border-gray-700">
+            <div className="font-mono text-xs max-w-3xl overflow-x-auto">
+              <pre className="text-gray-600 dark:text-gray-400 whitespace-pre-wrap break-all bg-gray-50 dark:bg-gray-900 p-2 rounded border border-gray-200 dark:border-gray-700">
                 {tool.status.result}
               </pre>
             </div>
           )}
           {tool.status.type === 'error' && (
-            <div className="text-red-600 dark:text-red-400 font-mono text-xs max-w-3xl overflow-x-auto">
-              <pre className="whitespace-pre-wrap break-all bg-red-50 dark:bg-red-900/20 p-2 rounded border border-red-200 dark:border-red-900/50">
+            <div className="font-mono text-xs max-w-3xl overflow-x-auto">
+              <pre className="text-red-600 dark:text-red-400 whitespace-pre-wrap break-all bg-red-50 dark:bg-red-900/20 p-2 rounded border border-red-200 dark:border-red-900/50">
                 Error: {tool.status.error}
               </pre>
             </div>
@@ -187,14 +200,14 @@ function SingleToolUse({ tool }: { tool: ToolUse }) {
         <>
           {tool.toolArgs && (
             <div className="text-gray-600 dark:text-gray-400 font-mono text-xs max-w-3xl overflow-x-auto">
-              <pre className="whitespace-pre-wrap break-all bg-gray-100 dark:bg-gray-900 p-2 rounded border border-gray-200 dark:border-gray-700">
+              <pre className="whitespace-pre-wrap break-all bg-gray-50 dark:bg-gray-900 p-2 rounded border border-gray-200 dark:border-gray-700">
                 {tool.toolArgs}
               </pre>
             </div>
           )}
           {tool.status.type === 'success' && (
             <div className="text-gray-700 dark:text-gray-300 font-mono text-xs max-w-3xl overflow-x-auto">
-              <pre className="whitespace-pre-wrap break-all bg-gray-100 dark:bg-gray-900 p-2 rounded border border-gray-200 dark:border-gray-700">
+              <pre className="whitespace-pre-wrap break-all bg-gray-50 dark:bg-gray-900 p-2 rounded border border-gray-200 dark:border-gray-700">
                 {tool.status.result}
               </pre>
             </div>
@@ -237,7 +250,7 @@ function SingleToolUse({ tool }: { tool: ToolUse }) {
               <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Tool Arguments
               </h4>
-              <pre className="text-xs bg-gray-50 dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-700 overflow-auto">
+              <pre className="text-gray-700 dark:text-gray-300 text-xs bg-gray-50 dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-700 overflow-auto">
                 {tool.toolArgs}
               </pre>
             </div>
@@ -246,7 +259,7 @@ function SingleToolUse({ tool }: { tool: ToolUse }) {
                 <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Tool Result
                 </h4>
-                <pre className="text-xs bg-gray-50 dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-700 overflow-auto">
+                <pre className="text-gray-700 dark:text-gray-300 text-xs bg-gray-50 dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-700 overflow-auto">
                   {tool.status.result}
                 </pre>
               </div>
@@ -254,7 +267,7 @@ function SingleToolUse({ tool }: { tool: ToolUse }) {
             {tool.status.type === 'error' && (
               <div>
                 <h4 className="text-sm font-medium text-red-600 dark:text-red-400 mb-2">Error</h4>
-                <pre className="text-xs bg-red-50 dark:bg-red-900/20 p-3 rounded border border-red-200 dark:border-red-900/50 overflow-auto">
+                <pre className="text-red-600 dark:text-red-400 text-xs bg-red-50 dark:bg-red-900/20 p-3 rounded border border-red-200 dark:border-red-900/50 overflow-auto">
                   {tool.status.error}
                 </pre>
               </div>
