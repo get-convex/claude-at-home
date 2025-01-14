@@ -3,6 +3,9 @@ import { Doc, Id } from '../_generated/dataModel';
 import { MutationCtx, QueryCtx } from '../_generated/server';
 
 async function allowedEmail(ctx: QueryCtx, emailAddress: string): Promise<boolean> {
+  if (process.env.ALLOWED_DOMAIN === "*") {
+    return true;
+  }
   if (process.env.ALLOWED_DOMAIN && emailAddress.endsWith(`@${process.env.ALLOWED_DOMAIN}`)) {
     return true;
   }

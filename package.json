@@ -8,7 +8,7 @@
     "dev:frontend": "vite",
     "dev:backend": "convex dev",
     "predev": "convex dev --until-success",
-    "build": "tsc && vite build",
+    "build": "vite build",
     "lint": "tsc && eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "format": "prettier --write ."
