@@ -60,8 +60,6 @@ Finally, let's try it end-to-end! Go to `localhost:5173`, log in and start chatt
 
 ## Coming soon
 
-- Running code tool use (pyodide, webcontainers)
-- Web search tool use (https://tavily.com/)
 - Encryption at rest (lock account with a password, derive private/public key, send public key to server to encrypt)
 - Collaborative chats
 - Debug viewer and multiple personas
