@@ -31,6 +31,7 @@ you will have to escape dollar signs in your response.`;
 const openai = openaiClient();
 
 async function streamChat(context: Array<ChatCompletionMessageParam>) {
+  const start = Date.now();
   const stream = await openai.chat.completions.create({
     model: 'gpt-4o',
     stream: true,
@@ -49,6 +50,7 @@ async function streamChat(context: Array<ChatCompletionMessageParam>) {
   if (firstChunk.done) {
     throw new Error('Empty response from OpenAI');
   }
+  console.log(`First chunk in ${Date.now() - start}ms`);
   let chunk = firstChunk.value;
   if (chunk.choices[0].delta.tool_calls) {
     const firstDelta = chunk.choices[0].delta;
@@ -101,6 +103,7 @@ async function streamChat(context: Array<ChatCompletionMessageParam>) {
       yield functionArgs;
     }
 
+    console.log(`Tool call in ${Date.now() - start}ms`);
     return {
       type: 'toolCall' as const,
       functionName: toolCall.function.name,
@@ -123,6 +126,7 @@ async function streamChat(context: Array<ChatCompletionMessageParam>) {
       }
       yield body;
     }
+    console.log(`Stream chat in ${Date.now() - start}ms`);
     return { type: 'message' as const, stream: streamChat(chunk) };
   }
 }

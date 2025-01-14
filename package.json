@@ -50,6 +50,7 @@
     "clsx": "^2.0.0",
     "cmdk": "^0.2.0",
     "convex": "^1.17.0",
+    "convex-helpers": "^0.1.67",
     "date-fns": "^2.30.0",
     "katex": "^0.16.18",
     "lucide-react": "^0.469.0",

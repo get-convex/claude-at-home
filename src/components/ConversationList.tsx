@@ -1,6 +1,7 @@
 import { Edit2, Plus, Trash2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useMutation } from 'convex/react';
+import { useQuery } from 'convex-helpers/react/cache';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
 import { Button } from './ui/button';
@@ -58,6 +59,13 @@ export function ConversationList({
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [conversationToDelete, setConversationToDelete] = useState<Id<'conversations'> | null>(
     null
+  );
+
+  // Preload the top-level messages list on hover.
+  const [preloadConversation, setPreloadConversation] = useState<Id<'conversations'> | null>(null);
+  useQuery(
+    api.messages.list,
+    preloadConversation ? { conversationId: preloadConversation } : 'skip'
   );
 
   const createConversation = useMutation(api.conversations.create);
@@ -123,7 +131,14 @@ export function ConversationList({
       ) : (
         <>
           <button
-            onClick={() => onSelectConversation(conversation._id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelectConversation(conversation._id);
+            }}
+            onMouseEnter={(e) => {
+              e.stopPropagation();
+              setPreloadConversation(conversation._id);
+            }}
             className="w-full text-left truncate text-gray-900 dark:text-gray-100 pr-16"
           >
             {conversation.name || 'New Chat'}

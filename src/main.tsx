@@ -1,6 +1,7 @@
 import { ClerkProvider, useAuth } from '@clerk/clerk-react';
 import { ConvexReactClient } from 'convex/react';
 import { ConvexProviderWithClerk } from 'convex/react-clerk';
+import { ConvexQueryCacheProvider } from 'convex-helpers/react/cache';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
@@ -14,7 +15,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <ClerkProvider publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}>
         <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-          <App />
+          <ConvexQueryCacheProvider>
+            <App />
+          </ConvexQueryCacheProvider>
         </ConvexProviderWithClerk>
       </ClerkProvider>
     </ErrorBoundary>

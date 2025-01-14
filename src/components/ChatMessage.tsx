@@ -7,7 +7,8 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import openAiLogo from '../assets/openai-white-logomark.svg';
 import { Message } from '../types';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation } from 'convex/react';
+import { useQuery } from 'convex-helpers/react/cache';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
 import { useRef, useState } from 'react';
@@ -281,9 +282,9 @@ function SingleToolUse({ tool }: { tool: ToolUse }) {
 
   return (
     <div className="border-b last:border-b-0 py-1.5">
-      <button
+      <div
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center gap-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700/50 rounded px-2 py-1"
+        className="w-full flex items-center gap-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700/50 rounded px-2 py-1 cursor-pointer"
       >
         {isExpanded ? (
           <ChevronDown className="w-4 h-4 text-gray-500" />
@@ -311,7 +312,7 @@ function SingleToolUse({ tool }: { tool: ToolUse }) {
             <X className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
           )}
         </div>
-      </button>
+      </div>
       {isExpanded && <div className="px-8 py-2 space-y-2">{renderToolContent()}</div>}
       {renderRawDataModal()}
     </div>

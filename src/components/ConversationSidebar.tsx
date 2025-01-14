@@ -38,7 +38,7 @@ export function ConversationSidebar({
         onClick={onToggleCollapse}
         className={`absolute top-1/2 -translate-y-1/2 ${
           isCollapsed ? '-right-3' : '-right-3'
-        } z-50 p-1 bg-white dark:bg-gray-800 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700`}
+        } z-40 p-1 bg-white dark:bg-gray-800 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700`}
       >
         {isCollapsed ? (
           <ChevronRight className="w-4 h-4 text-gray-600 dark:text-gray-400" />

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useQuery } from 'convex/react';
+import { useQuery } from 'convex-helpers/react/cache';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
 import { ChatMessage } from './ChatMessage';
@@ -40,7 +40,9 @@ export function ChatLayout() {
       <ConversationSidebar
         conversations={conversations}
         selectedConversationId={selectedConversationId}
-        onSelectConversation={setSelectedConversationId}
+        onSelectConversation={(args) => {
+          setSelectedConversationId(args);
+        }}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
       />
