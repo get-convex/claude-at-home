@@ -185,7 +185,7 @@ export function ConversationList({
         conversationName={conversations.find((c) => c._id === conversationToDelete)?.name || ''}
       />
 
-      <div className="flex flex-col px-4">
+      <div className="flex flex-col px-4 min-h-screen">
         <Button
           onClick={handleNewConversation}
           className="w-full mb-6 mt-4 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100"

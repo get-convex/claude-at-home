@@ -55,6 +55,16 @@ export default function App() {
             </Button>
             <UserButton afterSignOutUrl="#" />
           </div>
+          <div className="absolute top-16 right-4 flex items-center gap-2">
+            <a
+              target="_blank"
+              href="https://convex.dev"
+              className="font-['Kanit']"
+              style={{ fontWeight: '700' }}
+            >
+              convex labs
+            </a>
+          </div>
           <div className="flex flex-col">
             <h1 className="text-4xl font-extrabold my-8 text-center text-gray-800 dark:text-gray-100">
               {import.meta.env.VITE_CHAT_TITLE ?? '"We have Claude at home"'}
