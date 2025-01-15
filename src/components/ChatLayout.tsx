@@ -7,18 +7,33 @@ import { ChatInput } from './ChatInput';
 import { ConversationSidebar } from './ConversationSidebar';
 import 'katex/dist/katex.min.css';
 
-export function ChatLayout() {
+// Define conversation type to match both preloaded and live data
+type Conversation = {
+  _id: Id<'conversations'>;
+  name?: string;
+  creatorId: Id<'users'>;
+  _creationTime: number;
+};
+
+interface ChatLayoutProps {
+  preloadedConversations?: Conversation[];
+}
+
+export function ChatLayout({ preloadedConversations }: ChatLayoutProps) {
   const [selectedConversationId, setSelectedConversationId] = useState<Id<'conversations'> | null>(
     null
   );
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  const conversations = useQuery(api.conversations.list) ?? [];
+  // Use preloaded data as fallback for initial render
+  const liveConversations = useQuery(api.conversations.list);
+  const conversations: Conversation[] = liveConversations ?? preloadedConversations ?? [];
   const messages = useQuery(
     api.messages.list,
     selectedConversationId ? { conversationId: selectedConversationId } : 'skip'
   );
 
+  // Set initial conversation from preloaded data or live data
   useEffect(() => {
     if (conversations.length > 0 && !selectedConversationId) {
       setSelectedConversationId(conversations[0]._id);

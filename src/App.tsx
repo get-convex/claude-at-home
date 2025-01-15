@@ -5,6 +5,7 @@ import { ThemeSwitcher } from './components/theme-switcher';
 import { ChatLayout } from './components/ChatLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '../convex/_generated/api';
+import { Id } from '../convex/_generated/dataModel';
 
 function WaitForAuth(props: { children: React.ReactNode }) {
   const status = useQuery(api.auth.currentUser);
@@ -34,7 +35,15 @@ function WaitForAuth(props: { children: React.ReactNode }) {
   );
 }
 
-export default function App() {
+interface AppProps {
+  preloadedConversations?: Array<{
+    _id: Id<'conversations'>;
+    name?: string;
+    creatorId: Id<'users'>;
+  }>;
+}
+
+export default function App({ preloadedConversations }: AppProps) {
   return (
     <main className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
       <Authenticated>
@@ -72,7 +81,7 @@ export default function App() {
             <hr className="border-gray-200 dark:border-gray-700" />
           </div>
           <div className="flex-1 flex overflow-hidden">
-            <ChatLayout />
+            <ChatLayout preloadedConversations={preloadedConversations} />
           </div>
         </WaitForAuth>
       </Authenticated>
