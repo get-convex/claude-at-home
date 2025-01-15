@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {
+const config = {
   reactStrictMode: true,
-  swcMinify: true,
   // Ensure we handle /src directory properly
   pageExtensions: ['tsx', 'ts'],
   // Configure environment variables
@@ -11,4 +10,4 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default config;
