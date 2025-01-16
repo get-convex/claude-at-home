@@ -3,8 +3,83 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { getHighlighter } from 'shiki';
+import { useEffect } from 'react';
+
+// Initialize Shiki highlighter
+let highlighterPromise: Promise<any> | null = null;
+
+const initializeHighlighter = () => {
+  if (!highlighterPromise) {
+    highlighterPromise = getHighlighter({
+      themes: ['one-dark-pro'],
+      langs: ['python', 'javascript', 'typescript', 'json', 'markdown', 'bash', 'text'],
+    }).catch(error => {
+      console.error('Failed to initialize Shiki highlighter:', error);
+      highlighterPromise = null;
+      throw error;
+    });
+  }
+};
+
+// Initialize highlighter immediately
+void initializeHighlighter();
+
+const getShikiHighlighter = async () => {
+  if (!highlighterPromise) {
+    initializeHighlighter();
+  }
+  return highlighterPromise!;
+};
+
+function CodeBlock({ code, language }: { code: string; language: string }) {
+  const [html, setHtml] = useState<string>('');
+  const mounted = useRef(true);
+  
+  useEffect(() => {
+    const highlight = async () => {
+      try {
+        const highlighter = await getShikiHighlighter();
+        if (!mounted.current) return;
+        
+        const highlighted = await highlighter.codeToHtml(code, { lang: language || 'text' })
+          .catch((error: unknown) => {
+            console.error('Error highlighting code:', error);
+            return `<pre class="shiki-error">${code}</pre>`;
+          });
+          
+        if (mounted.current) {
+          setHtml(highlighted);
+        }
+      } catch (error: unknown) {
+        console.error('Error initializing highlighter:', error);
+        if (mounted.current) {
+          setHtml(`<pre class="shiki-error">${code}</pre>`);
+        }
+      }
+    };
+    
+    void highlight().catch((error: unknown) => {
+      console.error('Unhandled error in highlight effect:', error);
+    });
+    
+    return () => {
+      mounted.current = false;
+    };
+  }, [code, language]);
+
+  if (!html) {
+    return <div className="animate-pulse bg-gray-700 rounded h-8"></div>;
+  }
+
+  return (
+    <div 
+      className="text-sm"
+      style={{ fontSize: '0.75rem', padding: '0.5rem' }}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
 import openAiLogo from '../assets/openai-white-logomark.svg';
 import { Message } from '../types';
 import { useMutation } from 'convex/react';
@@ -118,13 +193,7 @@ function SingleToolUse({ tool }: { tool: ToolUse }) {
               </div>
             )}
             {contents && (
-              <SyntaxHighlighter
-                language={language}
-                style={oneDark}
-                customStyle={{ fontSize: '0.75rem', padding: '0.5rem' }}
-              >
-                {contents}
-              </SyntaxHighlighter>
+              <CodeBlock code={contents} language={language} />
             )}
           </div>
         );
@@ -339,6 +408,13 @@ interface ChatMessageProps {
 
 export function ChatMessage({ message }: ChatMessageProps) {
   const cancel = useMutation(api.messages.cancel);
+  
+  const handleCancel = () => {
+    void cancel({ messageId: message._id }).catch(error => {
+      console.error('Failed to cancel message generation:', error);
+    });
+  };
+
   return (
     <article className="py-6 border-b border-gray-100 dark:border-gray-800">
       <div className="flex items-start gap-4">
@@ -367,7 +443,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
             </div>
             {message.state.type === 'generating' && (
               <button
-                onClick={() => cancel({ messageId: message._id })}
+                onClick={handleCancel}
                 className="px-2 py-0.5 rounded text-red-600 hover:text-red-50 hover:bg-red-600 dark:text-red-400 dark:hover:text-red-50 dark:hover:bg-red-600 transition-colors flex items-center gap-1.5 text-xs font-medium border border-red-200 dark:border-red-900/50 hover:border-transparent"
                 title="Cancel generation"
               >
@@ -385,9 +461,11 @@ export function ChatMessage({ message }: ChatMessageProps) {
                 code: ({ inline, className, children, ...props }: any) => {
                   const match = /language-(\w+)/.exec(className || '');
                   return !inline && match ? (
-                    <SyntaxHighlighter {...props} style={oneDark} language={match[1]} PreTag="div">
-                      {String(children).replace(/\n$/, '')}
-                    </SyntaxHighlighter>
+                    <CodeBlock 
+                      code={String(children).replace(/\n$/, '')}
+                      language={match[1]}
+                      {...props}
+                    />
                   ) : (
                     <code className={className} {...props}>
                       {children}

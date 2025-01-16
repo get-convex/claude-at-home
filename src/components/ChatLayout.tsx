@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useQuery } from 'convex-helpers/react/cache';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
@@ -7,25 +7,46 @@ import { ChatInput } from './ChatInput';
 import { ConversationSidebar } from './ConversationSidebar';
 import 'katex/dist/katex.min.css';
 
-export function ChatLayout() {
+// Define conversation type to match both preloaded and live data
+type Conversation = {
+  _id: Id<'conversations'>;
+  name?: string;
+  creatorId: Id<'users'>;
+  _creationTime: number;
+};
+
+interface ChatLayoutProps {
+  preloadedConversations?: Conversation[];
+}
+
+export function ChatLayout({ preloadedConversations }: ChatLayoutProps) {
   const [selectedConversationId, setSelectedConversationId] = useState<Id<'conversations'> | null>(
     null
   );
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  const conversations = useQuery(api.conversations.list) ?? [];
+  // Use preloaded data as fallback for initial render
+  const liveConversations = useQuery(api.conversations.list);
   const messages = useQuery(
     api.messages.list,
     selectedConversationId ? { conversationId: selectedConversationId } : 'skip'
   );
 
+  // Memoize conversations to prevent unnecessary effect triggers
+  const conversations = useMemo(
+    () => liveConversations ?? preloadedConversations ?? [],
+    [liveConversations, preloadedConversations]
+  );
+
+  // Set initial conversation from preloaded data or live data
   useEffect(() => {
     if (conversations.length > 0 && !selectedConversationId) {
       setSelectedConversationId(conversations[0]._id);
     }
   }, [conversations, selectedConversationId]);
 
-  useEffect(() => {
+  // Memoize scroll handler to fix dependency warning
+  const handleScroll = useCallback(() => {
     const lastMessage = messages && messages[messages.length - 1];
     if (lastMessage && lastMessage.state.type === 'generating') {
       const chatContainer = document.querySelector('.chat-messages-container');
@@ -34,6 +55,10 @@ export function ChatLayout() {
       }
     }
   }, [messages]);
+
+  useEffect(() => {
+    handleScroll();
+  }, [handleScroll]);
 
   return (
     <div className="flex flex-1 h-full">

@@ -7,7 +7,6 @@
 /.vscode/
 /docs/.vitepress/cache
 dist
-dist-ssr
 explorations
 node_modules
 playground-temp
@@ -16,3 +15,4 @@ TODOs.md
 .eslintcache
 .vercel
 python/__pycache__
+.next
