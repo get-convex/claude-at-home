@@ -2,7 +2,6 @@
   "name": "claude-at-home",
   "private": true,
   "version": "0.0.0",
-  "type": "module",
   "scripts": {
     "dev": "npm-run-all --parallel dev:frontend dev:backend",
     "dev:frontend": "next dev",

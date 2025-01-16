@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useQuery } from 'convex-helpers/react/cache';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
@@ -27,10 +27,15 @@ export function ChatLayout({ preloadedConversations }: ChatLayoutProps) {
 
   // Use preloaded data as fallback for initial render
   const liveConversations = useQuery(api.conversations.list);
-  const conversations: Conversation[] = liveConversations ?? preloadedConversations ?? [];
   const messages = useQuery(
     api.messages.list,
     selectedConversationId ? { conversationId: selectedConversationId } : 'skip'
+  );
+
+  // Memoize conversations to prevent unnecessary effect triggers
+  const conversations = useMemo(
+    () => liveConversations ?? preloadedConversations ?? [],
+    [liveConversations, preloadedConversations]
   );
 
   // Set initial conversation from preloaded data or live data
@@ -40,7 +45,8 @@ export function ChatLayout({ preloadedConversations }: ChatLayoutProps) {
     }
   }, [conversations, selectedConversationId]);
 
-  useEffect(() => {
+  // Memoize scroll handler to fix dependency warning
+  const handleScroll = useCallback(() => {
     const lastMessage = messages && messages[messages.length - 1];
     if (lastMessage && lastMessage.state.type === 'generating') {
       const chatContainer = document.querySelector('.chat-messages-container');
@@ -49,6 +55,10 @@ export function ChatLayout({ preloadedConversations }: ChatLayoutProps) {
       }
     }
   }, [messages]);
+
+  useEffect(() => {
+    handleScroll();
+  }, [handleScroll]);
 
   return (
     <div className="flex flex-1 h-full">

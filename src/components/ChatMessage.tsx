@@ -40,20 +40,29 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
     const highlight = async () => {
       try {
         const highlighter = await getShikiHighlighter();
+        if (!mounted.current) return;
+        
+        const highlighted = await highlighter.codeToHtml(code, { lang: language || 'text' })
+          .catch((error: unknown) => {
+            console.error('Error highlighting code:', error);
+            return `<pre class="shiki-error">${code}</pre>`;
+          });
+          
         if (mounted.current) {
-          const highlighted = await highlighter.codeToHtml(code, { lang: language });
           setHtml(highlighted);
         }
-      } catch (error) {
-        console.error('Error highlighting code:', error);
-        // Fallback to plain text if highlighting fails
+      } catch (error: unknown) {
+        console.error('Error initializing highlighter:', error);
         if (mounted.current) {
           setHtml(`<pre class="shiki-error">${code}</pre>`);
         }
       }
     };
     
-    void highlight();
+    void highlight().catch((error: unknown) => {
+      console.error('Unhandled error in highlight effect:', error);
+    });
+    
     return () => {
       mounted.current = false;
     };
@@ -400,12 +409,10 @@ interface ChatMessageProps {
 export function ChatMessage({ message }: ChatMessageProps) {
   const cancel = useMutation(api.messages.cancel);
   
-  const handleCancel = async () => {
-    try {
-      await cancel({ messageId: message._id });
-    } catch (error) {
+  const handleCancel = () => {
+    void cancel({ messageId: message._id }).catch(error => {
       console.error('Failed to cancel message generation:', error);
-    }
+    });
   };
 
   return (
@@ -436,7 +443,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
             </div>
             {message.state.type === 'generating' && (
               <button
-                onClick={() => void handleCancel()}
+                onClick={handleCancel}
                 className="px-2 py-0.5 rounded text-red-600 hover:text-red-50 hover:bg-red-600 dark:text-red-400 dark:hover:text-red-50 dark:hover:bg-red-600 transition-colors flex items-center gap-1.5 text-xs font-medium border border-red-200 dark:border-red-900/50 hover:border-transparent"
                 title="Cancel generation"
               >

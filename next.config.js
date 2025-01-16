@@ -1,5 +1,5 @@
 /** @type {import('next').NextConfig} */
-const config = {
+module.exports = {
   reactStrictMode: true,
   // Ensure we handle /src directory properly
   pageExtensions: ['tsx', 'ts'],
@@ -9,5 +9,3 @@ const config = {
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
   },
 };
-
-export default config;
