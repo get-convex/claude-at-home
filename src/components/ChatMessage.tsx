@@ -3,8 +3,51 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { getHighlighter } from 'shiki';
+import { useEffect } from 'react';
+
+// Initialize Shiki highlighter
+let highlighterPromise: Promise<any> | null = null;
+
+const getShikiHighlighter = async () => {
+  if (!highlighterPromise) {
+    highlighterPromise = getHighlighter({
+      themes: ['one-dark-pro'],
+      langs: ['python', 'javascript', 'typescript', 'json', 'markdown', 'bash', 'text'],
+    });
+  }
+  return highlighterPromise;
+};
+
+function CodeBlock({ code, language }: { code: string; language: string }) {
+  const [html, setHtml] = useState<string>('');
+  const mounted = useRef(true);
+  
+  useEffect(() => {
+    getShikiHighlighter().then(async highlighter => {
+      if (mounted.current) {
+        const highlighted = await highlighter.codeToHtml(code, { lang: language });
+        setHtml(highlighted);
+      }
+    });
+    
+    return () => {
+      mounted.current = false;
+    };
+  }, [code, language]);
+
+  if (!html) {
+    return <div className="animate-pulse bg-gray-700 rounded h-8"></div>;
+  }
+
+  return (
+    <div 
+      className="text-sm"
+      style={{ fontSize: '0.75rem', padding: '0.5rem' }}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
 import openAiLogo from '../assets/openai-white-logomark.svg';
 import { Message } from '../types';
 import { useMutation } from 'convex/react';
@@ -118,13 +161,7 @@ function SingleToolUse({ tool }: { tool: ToolUse }) {
               </div>
             )}
             {contents && (
-              <SyntaxHighlighter
-                language={language}
-                style={oneDark}
-                customStyle={{ fontSize: '0.75rem', padding: '0.5rem' }}
-              >
-                {contents}
-              </SyntaxHighlighter>
+              <CodeBlock code={contents} language={language} />
             )}
           </div>
         );
@@ -385,9 +422,11 @@ export function ChatMessage({ message }: ChatMessageProps) {
                 code: ({ inline, className, children, ...props }: any) => {
                   const match = /language-(\w+)/.exec(className || '');
                   return !inline && match ? (
-                    <SyntaxHighlighter {...props} style={oneDark} language={match[1]} PreTag="div">
-                      {String(children).replace(/\n$/, '')}
-                    </SyntaxHighlighter>
+                    <CodeBlock 
+                      code={String(children).replace(/\n$/, '')}
+                      language={match[1]}
+                      {...props}
+                    />
                   ) : (
                     <code className={className} {...props}>
                       {children}
