@@ -9,14 +9,27 @@ import { useEffect } from 'react';
 // Initialize Shiki highlighter
 let highlighterPromise: Promise<any> | null = null;
 
-const getShikiHighlighter = async () => {
+const initializeHighlighter = () => {
   if (!highlighterPromise) {
     highlighterPromise = getHighlighter({
       themes: ['one-dark-pro'],
       langs: ['python', 'javascript', 'typescript', 'json', 'markdown', 'bash', 'text'],
+    }).catch(error => {
+      console.error('Failed to initialize Shiki highlighter:', error);
+      highlighterPromise = null;
+      throw error;
     });
   }
-  return highlighterPromise;
+};
+
+// Initialize highlighter immediately
+void initializeHighlighter();
+
+const getShikiHighlighter = async () => {
+  if (!highlighterPromise) {
+    initializeHighlighter();
+  }
+  return highlighterPromise!;
 };
 
 function CodeBlock({ code, language }: { code: string; language: string }) {
@@ -24,13 +37,23 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
   const mounted = useRef(true);
   
   useEffect(() => {
-    getShikiHighlighter().then(async highlighter => {
-      if (mounted.current) {
-        const highlighted = await highlighter.codeToHtml(code, { lang: language });
-        setHtml(highlighted);
+    const highlight = async () => {
+      try {
+        const highlighter = await getShikiHighlighter();
+        if (mounted.current) {
+          const highlighted = await highlighter.codeToHtml(code, { lang: language });
+          setHtml(highlighted);
+        }
+      } catch (error) {
+        console.error('Error highlighting code:', error);
+        // Fallback to plain text if highlighting fails
+        if (mounted.current) {
+          setHtml(`<pre class="shiki-error">${code}</pre>`);
+        }
       }
-    });
+    };
     
+    void highlight();
     return () => {
       mounted.current = false;
     };
@@ -376,6 +399,15 @@ interface ChatMessageProps {
 
 export function ChatMessage({ message }: ChatMessageProps) {
   const cancel = useMutation(api.messages.cancel);
+  
+  const handleCancel = async () => {
+    try {
+      await cancel({ messageId: message._id });
+    } catch (error) {
+      console.error('Failed to cancel message generation:', error);
+    }
+  };
+
   return (
     <article className="py-6 border-b border-gray-100 dark:border-gray-800">
       <div className="flex items-start gap-4">
@@ -404,7 +436,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
             </div>
             {message.state.type === 'generating' && (
               <button
-                onClick={() => cancel({ messageId: message._id })}
+                onClick={() => void handleCancel()}
                 className="px-2 py-0.5 rounded text-red-600 hover:text-red-50 hover:bg-red-600 dark:text-red-400 dark:hover:text-red-50 dark:hover:bg-red-600 transition-colors flex items-center gap-1.5 text-xs font-medium border border-red-200 dark:border-red-900/50 hover:border-transparent"
                 title="Cancel generation"
               >
