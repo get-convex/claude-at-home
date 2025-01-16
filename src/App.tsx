@@ -1,3 +1,5 @@
+'use client';
+
 import { Button } from '@/components/ui/button';
 import { SignInButton, UserButton } from '@clerk/clerk-react';
 import { Authenticated, Unauthenticated, useQuery } from 'convex/react';
